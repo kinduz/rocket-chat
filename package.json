@@ -1,0 +1,21 @@
+{
+  "name": "rocket-chat",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "frontend:dev": "npm run dev --workspace=frontend",
+    "backend:dev": "npm run start:dev --workspace=backend",
+    "frontend:build": "npm run build --workspace=frontend",
+    "backend:build": "npm run build --workspace=backend"
+  },
+  "dependencies": {
+    "@biomejs/biome": "^2.4.7"
+  }
+}
