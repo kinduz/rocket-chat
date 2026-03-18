@@ -1,13 +1,13 @@
 import type { Metadata } from 'next';
-import { Inter, Geist } from 'next/font/google';
+import { Geist, Roboto } from 'next/font/google';
 import './globals.css';
+import { cn } from '@app/lib/utils';
 import { I18nInitializer } from '@app/shared/i18n';
-import { ThemeProvider } from '@app/shared/ui';
-import { cn } from "@app/lib/utils";
+import { ThemeProvider, Toaster } from '@app/shared/ui';
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
 
-const inter = Inter({ subsets: ['latin'] });
+const roboto = Roboto({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'Rocket-chat',
@@ -20,11 +20,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ru" suppressHydrationWarning className={cn("font-sans", geist.variable)}>
-      <body className={`${inter.className} bg-background text-foreground min-h-screen`}>
+    <html
+      lang="ru"
+      suppressHydrationWarning
+      className={cn('font-sans', geist.variable)}
+    >
+      <body
+        className={`${roboto.className} bg-background text-foreground min-h-screen`}
+      >
         <ThemeProvider>
           <I18nInitializer />
           {children}
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

@@ -33,13 +33,7 @@ export class AuthService {
       where: { phone },
     });
 
-    if (existedOtp) {
-      if (existedOtp.expiresAt < new Date()) {
-        await this.otpRepository.remove(existedOtp);
-      } else {
-        throw new UnauthorizedException('OTP already sent');
-      }
-    }
+    if (existedOtp) await this.otpRepository.remove(existedOtp);
 
     const code = this.generateOtp();
     const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
@@ -48,16 +42,10 @@ export class AuthService {
       this.otpRepository.create({ phone, code, expiresAt }),
     );
 
-    console.log(`[OTP] ${phone} → ${code}`);
-
-    const isDev = process.env.NODE_ENV !== 'production';
-
-    await this.sendSMSToUser(code, phone.split('+')[1]);
-
     return {
       message: `OTP sent to ${phone}`,
       ttlMin: OTP_TTL_MINUTES,
-      ...(isDev && { otp: code }),
+      otp: code,
     };
   }
 
@@ -67,6 +55,10 @@ export class AuthService {
     });
 
     if (!otp) {
+      throw new UnauthorizedException('Invalid OTP code');
+    }
+
+    if (otp.code !== code) {
       throw new UnauthorizedException('Invalid OTP code');
     }
 
@@ -84,13 +76,11 @@ export class AuthService {
       };
     }
 
-    if (otp.code !== code) {
-      throw new UnauthorizedException('Invalid OTP code');
-    }
-
     await this.otpRepository.remove(otp);
 
     let user = await this.userService.findByPhone(phone);
+    console.log('user', user);
+
     if (!user) {
       user = await this.userService.create(phone);
     }
@@ -109,36 +99,36 @@ export class AuthService {
     return String(Math.floor(100000 + Math.random() * 900000));
   }
 
-  private sendSMSToUser = async (otp: string, destination: string) => {
-    const {
-      EXOLVE_API_KEY: api_key,
-      EXOLVE_API_BASE_URL: baseUrl,
-      EXOLVE_API_SENDER_PHONE_NUMBER: senderPhoneNumber,
-    } = process.env;
+  // private sendSMSToUser = async (otp: string, destination: string) => {
+  //   const {
+  //     EXOLVE_API_KEY: api_key,
+  //     EXOLVE_API_BASE_URL: baseUrl,
+  //     EXOLVE_API_SENDER_PHONE_NUMBER: senderPhoneNumber,
+  //   } = process.env;
 
-    const url = `${baseUrl}/SendSMS`;
+  //   const url = `${baseUrl}/SendSMS`;
 
-    const text = `Ваш код подтверждения в Rocket Chat: ${otp}`;
+  //   const text = `Ваш код подтверждения в Rocket Chat: ${otp}`;
 
-    const body = {
-      number: senderPhoneNumber,
-      destination,
-      text,
-    };
+  //   const body = {
+  //     number: senderPhoneNumber,
+  //     destination,
+  //     text,
+  //   };
 
-    const headers = {
-      Authorization: `Bearer ${api_key}`,
-      'Content-Type': 'application/json',
-    };
+  //   const headers = {
+  //     Authorization: `Bearer ${api_key}`,
+  //     'Content-Type': 'application/json',
+  //   };
 
-    try {
-      const data = this.httpService.post(url, body, { headers });
-      console.log(await lastValueFrom(data));
+  //   try {
+  //     const data = this.httpService.post(url, body, { headers });
+  //     console.log(await lastValueFrom(data));
 
-      return;
-    } catch (e) {
-      console.error('Error: ', e.response.data.error, destination);
-      throw new BadRequestException(ERRORS_MSG.SEND_SMS_ERROR);
-    }
-  };
+  //     return;
+  //   } catch (e) {
+  //     console.error('Error: ', e.response.data.error, destination);
+  //     throw new BadRequestException(ERRORS_MSG.SEND_SMS_ERROR);
+  //   }
+  // };
 }

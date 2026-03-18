@@ -1,3 +1,40 @@
 {
-  "title": "Rocket-chat"
+  "common": {
+    "appName": "Rocket chat",
+    "switchLanguage": "Switch language",
+    "submit": "Submit",
+    "error": {
+      "somethingWentWrong": "Something went wrong, please try again later"
+    }
+  },
+  "auth": {
+    "signin": {
+      "title": "Sign In to Rocket chat",
+      "phoneLabel": "Phone number",
+      "phonePlaceholder": "Enter your phone number",
+      "submitButton": "Continue",
+      "loading": "Loading..."
+    },
+    "otp": {
+      "title": "Phone verification",
+      "devHint": "SMS sending is not working yet. Click the rocket 10 times — the code will appear in the top-left corner.",
+      "subtitle": "We sent a code to {{phone}}",
+      "submitButton": "Confirm",
+      "resendButton": "Resend code",
+      "resendCountdown": "Resend code ({{time}})",
+      "changePhone": "Change number",
+      "error": {
+        "invalidOtp": "Invalid or expired code",
+        "otpExpired": "Code has expired, a new one has been sent",
+        "alreadySent": "Code was already sent, please try again later"
+      }
+    },
+    "validation": {
+      "phoneRequired": "Enter your phone number",
+      "phoneInvalid": "Invalid phone number",
+      "otpRequired": "Enter the code",
+      "otpLength": "Code must be 6 digits",
+      "otpRecentlySent": "Code was already sent, please try again later"
+    }
+  }
 }

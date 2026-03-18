@@ -1,11 +1,7 @@
 'use client';
 
-import { PhoneNumberField } from '@app/shared';
+import { AuthForm } from '@app/features/auth/ui';
 
 export function SignInPage() {
-  return (
-    <>
-      <PhoneNumberField name="1" />
-    </>
-  );
+  return <AuthForm />;
 }

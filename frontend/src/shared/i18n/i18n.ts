@@ -22,8 +22,8 @@ if (typeof window !== 'undefined') {
     .use(initReactI18next)
     .init({
       resources,
-      fallbackLng: 'en',
-      lng: 'en',
+      fallbackLng: 'ru',
+      lng: 'ru',
       interpolation: {
         escapeValue: false,
       },
@@ -35,8 +35,8 @@ if (typeof window !== 'undefined') {
 } else {
   i18n.use(initReactI18next).init({
     resources,
-    fallbackLng: 'en',
-    lng: 'en',
+    fallbackLng: 'ru',
+    lng: 'ru',
     interpolation: {
       escapeValue: false,
     },

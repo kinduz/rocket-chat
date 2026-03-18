@@ -2,7 +2,7 @@ import { ROUTES } from '@app/shared/navigation';
 import { type NextRequest, NextResponse } from 'next/server';
 
 // Name of the cookie that holds the auth token
-const AUTH_COOKIE = 'token';
+const AUTH_COOKIE = 'accessToken';
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -23,6 +23,9 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // Skip Next.js internals, static files, and files with extensions (images, fonts, etc.)
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)', '/'],
+  matcher: [
+    // Все маршруты кроме _next и статики с расширениями
+    '/((?!_next/static|_next/image|favicon.ico)(?!.*\\.[a-zA-Z0-9]+$).*)',
+    '/',
+  ],
 };

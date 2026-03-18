@@ -1,3 +1,40 @@
 {
-  "title": "Rocket-chat"
+  "common": {
+    "appName": "Rocket chat",
+    "switchLanguage": "Переключить язык",
+    "submit": "Отправить",
+    "error": {
+      "somethingWentWrong": "Что-то пошло не так, попробуйте позже"
+    }
+  },
+  "auth": {
+    "signin": {
+      "title": "Войти в Rocket chat",
+      "phoneLabel": "Номер телефона",
+      "phonePlaceholder": "Введите номер телефона",
+      "submitButton": "Продолжить",
+      "loading": "Загрузка..."
+    },
+    "otp": {
+      "title": "Подтверждение номера",
+      "devHint": "SMS-отправка пока не работает. Нажмите на ракету 10 раз — и код появится в левом верхнем углу экрана.",
+      "subtitle": "Мы отправили код на номер {{phone}}",
+      "submitButton": "Подтвердить",
+      "resendButton": "Отправить код снова",
+      "resendCountdown": "Отправить код снова ({{time}})",
+      "changePhone": "Изменить номер",
+      "error": {
+        "invalidOtp": "Неверный или просроченный код",
+        "otpExpired": "Код истёк, новый код отправлен",
+        "alreadySent": "Код уже был отправлен, попробуйте позже"
+      }
+    },
+    "validation": {
+      "phoneRequired": "Введите номер телефона",
+      "phoneInvalid": "Некорректный номер телефона",
+      "otpRequired": "Введите код",
+      "otpLength": "Код должен содержать 6 цифр",
+      "otpRecentlySent": "Код уже был отправлен, попробуйте позже"
+    }
+  }
 }

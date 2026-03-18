@@ -12,7 +12,8 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
 
-  --primary: oklch(0.205 0 0);
+  --primary: #171717;
+  --primary-contrast: #ffffff;
   --primary-foreground: oklch(0.985 0 0);
 
   --secondary: oklch(0.97 0 0);
@@ -58,7 +59,7 @@
 
 /* ─── Dark theme ──────────────────────────────────────────────────────────── */
 .dark {
-  --background: oklch(0.145 0 0);
+  --background: #1b1b1d;
   --foreground: oklch(0.985 0 0);
 
   --card: oklch(0.205 0 0);
@@ -67,7 +68,8 @@
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
 
-  --primary: oklch(0.922 0 0);
+  --primary: #5846a7;
+  --primary-contrast: #483699;
   --primary-foreground: oklch(0.205 0 0);
 
   --secondary: oklch(0.269 0 0);
@@ -101,12 +103,12 @@
   --sidebar-ring: oklch(0.556 0 0);
 
   /* react-phone-input-2 */
-  --phone-bg: #1e293b;
-  --phone-text: #f1f5f9;
-  --phone-border: #334155;
-  --phone-flag-bg: #1e293b;
-  --phone-hover-bg: #334155;
-  --phone-scrollbar-track: #334155;
+  --phone-bg: oklch(0.205 0 0);
+  --phone-text: oklch(0.985 0 0);
+  --phone-border: oklch(1 0 0 / 12%);
+  --phone-flag-bg: oklch(0.22 0 0);
+  --phone-hover-bg: oklch(0.269 0 0);
+  --phone-scrollbar-track: oklch(0.269 0 0);
 }
 
 /* ─── Tailwind token mapping ──────────────────────────────────────────────── */
@@ -122,6 +124,8 @@
 
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+
+  --color-primary-contrast: var(--primary-contrast);
 
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);

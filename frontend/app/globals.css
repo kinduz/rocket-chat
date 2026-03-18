@@ -14,12 +14,85 @@
   }
 }
 
-/* ─── react-phone-input-2 theme overrides ─────────────────────────────────── */
-.react-tel-input {
-  & .form-control {
-    width: 100% !important;
-    background: var(--phone-bg) !important;
-    color: var(--phone-text) !important;
-    border-color: var(--phone-border) !important;
+/* ─── PhoneNumberField component styles ───────────────────────────────────── */
+.phone-field-country-name {
+  max-width: 240px;
+}
+
+.phone-field-trigger {
+  display: flex;
+  align-items: center;
+  height: 52px;
+  background: var(--background);
+  border: 1px solid var(--phone-border);
+  border-radius: var(--radius);
+  color: var(--phone-text);
+  transition: background-color 150ms;
+
+  &:hover {
+    background: var(--phone-hover-bg);
+  }
+}
+
+.phone-field-chevron {
+  color: var(--phone-text);
+  opacity: 0.5;
+}
+
+.phone-field-dropdown {
+  background: var(--background);
+  border: 1px solid var(--phone-border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+
+  &::-webkit-scrollbar {
+    width: 0px;
+  }
+  &::-webkit-scrollbar-track {
+    background: var(--phone-scrollbar-track);
+    border-radius: 0px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: var(--phone-border);
+    border-radius: 3px;
+  }
+}
+
+.phone-field-option {
+  color: var(--phone-text);
+  transition: background-color 150ms;
+
+  &:hover,
+  &.phone-field-option--active {
+    background: var(--phone-hover-bg);
+  }
+}
+
+.phone-field-mask {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  user-select: none;
+  font-size: 16px;
+  color: color-mix(in oklch, var(--phone-text) 25%, transparent);
+}
+
+.phone-field-input {
+  height: 52px;
+  background: var(--background);
+  border: 1px solid var(--phone-border);
+  border-radius: var(--radius);
+  color: var(--phone-text);
+  font-size: 16px;
+  outline: none;
+  transition: border-color 150ms, box-shadow 150ms;
+
+  &::placeholder {
+    color: color-mix(in oklch, var(--phone-text) 30%, transparent);
+  }
+
+  &:focus {
+    border-color: var(--ring);
   }
 }

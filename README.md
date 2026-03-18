@@ -1,4 +1,4 @@
-# tg-like-messenger-ui
+# Rocket-chat
 
 <p align="center">
   <img src="https://github.com/kinduz/rocket-chat/blob/main/frontend/src/pages/auth/assets/rocket-black.gif" alt="Rocket" width="160" />
