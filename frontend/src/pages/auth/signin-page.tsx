@@ -1,3 +1,5 @@
+'use client';
+
 import { PhoneNumberField } from '@app/shared';
 
 export function SignInPage() {

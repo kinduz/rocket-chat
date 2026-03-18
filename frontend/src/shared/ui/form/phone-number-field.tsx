@@ -15,11 +15,9 @@ export const PhoneNumberField = ({
   errorMessage,
   ...rest
 }: PhoneNumberFieldProps) => {
-  const { control } = useFormContext();
-
   return (
     <div className="flex flex-col gap-2">
-      <Controller
+      {/* <Controller
         name={name}
         control={control}
         render={({ field, fieldState }) => (
@@ -37,7 +35,8 @@ export const PhoneNumberField = ({
             )}
           </>
         )}
-      />
+      /> */}
+      <PhoneInput {...rest} />
     </div>
   );
 };

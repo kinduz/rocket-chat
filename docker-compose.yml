@@ -1,0 +1,70 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: rocket-chat-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - rocket-chat-network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: rocket-chat-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - rocket-chat-network
+
+  frontend:
+    build:
+      context: ./frontend
+      target: ${BUILD_TARGET:-dev}
+    container_name: rocket-chat-frontend
+    restart: unless-stopped
+    environment:
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - "3000:3000"
+    networks:
+      - rocket-chat-network
+
+  backend:
+    build:
+      context: ./backend
+      target: ${BUILD_TARGET:-dev}
+    container_name: rocket-chat-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./backend/src:/app/src
+    ports:
+      - "${PORT:-3001}:${PORT:-3001}"
+    depends_on:
+      - postgres
+    networks:
+      - rocket-chat-network
+
+volumes:
+  postgres_data:
+
+networks:
+  rocket-chat-network:
+    driver: bridge
