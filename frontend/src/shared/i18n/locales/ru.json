@@ -37,14 +37,22 @@
       "usernameLabel": "Имя пользователя",
       "usernamePlaceholder": "Введите имя пользователя",
       "saveButton": "Сохранить",
-      "skipButton": "Пропустить"
+      "skipButton": "Пропустить",
+      "error": {
+        "fieldTaken": "Это значение уже занято.",
+        "uniqueFieldsTaken": "Некоторые поля уже заняты."
+      }
     },
     "validation": {
       "phoneRequired": "Введите номер телефона",
       "phoneInvalid": "Некорректный номер телефона",
       "otpRequired": "Введите код",
       "otpLength": "Код должен содержать 6 цифр",
-      "otpRecentlySent": "Код уже был отправлен, попробуйте позже"
+      "otpRecentlySent": "Код уже был отправлен, попробуйте позже",
+      "emailInvalid": "Некорректный email",
+      "usernameMin": "Имя пользователя должно содержать минимум {{min}} символа",
+      "usernameMax": "Имя пользователя должно содержать максимум {{max}} символа",
+      "usernameFormat": "Допустимы только буквы, цифры и подчёркивание"
     }
   }
 }

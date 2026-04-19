@@ -1,7 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { ApiErrorCode, ApiException } from '../shared';
 import { UserService } from '../user/user.service';
 import { OtpCode } from './entities/otp-code.entity';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
@@ -47,21 +48,12 @@ export class AuthService {
     });
 
     if (!otp || otp.code !== code) {
-      throw new UnauthorizedException('invalid_otp');
+      throw new ApiException(ApiErrorCode.INVALID_OTP);
     }
 
     if (otp.expiresAt < new Date()) {
       await this.otpRepository.remove(otp);
-      const code = this.generateOtp();
-      const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
-
-      await this.otpRepository.save(
-        this.otpRepository.create({ phone, code, expiresAt }),
-      );
-
-      return {
-        message: `OTP expired. New OTP sent to ${phone}`,
-      };
+      throw new ApiException(ApiErrorCode.OTP_EXPIRED);
     }
 
     await this.otpRepository.remove(otp);

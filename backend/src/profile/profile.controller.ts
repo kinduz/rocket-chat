@@ -1,6 +1,5 @@
-import { Body, Controller, Put, Request } from '@nestjs/common';
-import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
-import { Auth } from '../shared/decorators/auth.decorator';
+import { Body, Controller, Put } from '@nestjs/common';
+import { Auth, CurrentUserID } from '../shared';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ProfileService } from './profile.service';
 
@@ -11,9 +10,9 @@ export class ProfileController {
   @Auth()
   @Put()
   updateProfile(
-    @Request() req: { user: JwtPayload },
+    @CurrentUserID() userId: string,
     @Body() dto: UpdateProfileDto,
   ) {
-    return this.profileService.updateProfile(req.user.sub, dto);
+    return this.profileService.updateProfile(userId, dto);
   }
 }

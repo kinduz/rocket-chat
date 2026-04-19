@@ -37,14 +37,22 @@
       "usernameLabel": "Username",
       "usernamePlaceholder": "Enter your username",
       "saveButton": "Save",
-      "skipButton": "Skip"
+      "skipButton": "Skip",
+      "error": {
+        "fieldTaken": "This value is already taken",
+        "uniqueFieldsTaken": "Some fields are already taken"
+      }
     },
     "validation": {
       "phoneRequired": "Enter your phone number",
       "phoneInvalid": "Invalid phone number",
       "otpRequired": "Enter the code",
       "otpLength": "Code must be 6 digits",
-      "otpRecentlySent": "Code was already sent, please try again later"
+      "otpRecentlySent": "Code was already sent, please try again later",
+      "emailInvalid": "Invalid email",
+      "usernameMin": "Username must be at least {{min}} characters",
+      "usernameMax": "Username must be at most {{max}} characters",
+      "usernameFormat": "Only letters, digits and underscore are allowed"
     }
   }
 }

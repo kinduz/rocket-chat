@@ -4,6 +4,7 @@ export type ApiErrorData = {
   error: ApiErrorCode;
   message: string;
   statusCode?: number;
+  fields?: string[];
 };
 
 export type ApiResponse<T> =
@@ -34,4 +35,5 @@ export enum ApiErrorCode {
   OTP_EXPIRED = 'otp_expired',
   SEND_SMS_ERROR = 'send_sms_error',
   TOO_MANY_REQUESTS = 'too_many_requests',
+  UNIQUE_FIELDS_TAKEN = 'unique_fields_taken',
 }

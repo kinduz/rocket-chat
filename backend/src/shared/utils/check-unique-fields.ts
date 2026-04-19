@@ -1,12 +1,12 @@
-import { ConflictException } from '@nestjs/common';
 import { FindOptionsWhere, Not, Repository } from 'typeorm';
+import { ApiErrorCode, ApiException } from './api-error';
 
 export async function checkUniqueFields<T extends { id: string }>(
   repository: Repository<T>,
   excludeId: string,
   fields: object,
 ): Promise<void> {
-  const errors: Record<string, string> = {};
+  const taken: string[] = [];
 
   await Promise.all(
     Object.entries(fields).map(async ([field, value]) => {
@@ -17,13 +17,11 @@ export async function checkUniqueFields<T extends { id: string }>(
         id: Not(excludeId),
       } as FindOptionsWhere<T>);
 
-      if (exists) {
-        errors[field] = `${field} already taken`;
-      }
+      if (exists) taken.push(field);
     }),
   );
 
-  if (Object.keys(errors).length > 0) {
-    throw new ConflictException(errors);
+  if (taken.length > 0) {
+    throw new ApiException(ApiErrorCode.UNIQUE_FIELDS_TAKEN, { fields: taken });
   }
 }

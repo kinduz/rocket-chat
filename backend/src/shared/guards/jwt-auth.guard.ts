@@ -1,12 +1,8 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { JwtPayload } from '../../auth/interfaces/jwt-payload.interface';
+import { ApiErrorCode, ApiException } from '../utils';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -17,14 +13,18 @@ export class JwtAuthGuard implements CanActivate {
     const token = this.extractToken(request);
 
     if (!token) {
-      throw new UnauthorizedException('Token not provided');
+      throw new ApiException(ApiErrorCode.UNAUTHORIZED, {
+        message: 'Token not provided',
+      });
     }
 
     try {
       const payload = await this.jwtService.verifyAsync<JwtPayload>(token);
       request['user'] = payload;
     } catch {
-      throw new UnauthorizedException('Invalid or expired token');
+      throw new ApiException(ApiErrorCode.UNAUTHORIZED, {
+        message: 'Invalid or expired token',
+      });
     }
 
     return true;

@@ -26,6 +26,21 @@ const otpSchema = yup.object({
     .length(6, () => i18n.t('auth.validation.otpLength')),
 });
 
+const profileSchema = yup.object({
+  email: yup
+    .string()
+    .transform((v) => (v === '' ? undefined : v))
+    .email(() => i18n.t('auth.validation.emailInvalid'))
+    .optional(),
+  username: yup
+    .string()
+    .transform((v) => (v === '' ? undefined : v))
+    .min(3, () => i18n.t('auth.validation.usernameMin', { min: 3 }))
+    .max(32, () => i18n.t('auth.validation.usernameMax', { max: 32 }))
+    .matches(/^[a-zA-Z0-9_]+$/, () => i18n.t('auth.validation.usernameFormat'))
+    .optional(),
+});
+
 export const useAuthForm = (onFinish?: () => void) => {
   const {
     i18n: { language },
@@ -50,6 +65,7 @@ export const useAuthForm = (onFinish?: () => void) => {
   });
 
   const profileForm = useForm<ProfileFormValues>({
+    resolver: yupResolver(profileSchema) as never,
     defaultValues: { email: '', username: '' },
   });
 
@@ -79,6 +95,16 @@ export const useAuthForm = (onFinish?: () => void) => {
       otpForm.trigger();
     }
   }, [language, otpForm]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-validate on language change to update error messages
+  useEffect(() => {
+    const hasErrors =
+      !!profileForm.formState.errors.email ||
+      !!profileForm.formState.errors.username;
+    if (hasErrors) {
+      profileForm.trigger();
+    }
+  }, [language, profileForm]);
 
   const [sendOtpState, sendOtp] = useAsyncFn(
     async (data: PhoneFormValues) => {
@@ -126,13 +152,11 @@ export const useAuthForm = (onFinish?: () => void) => {
       if (res.error) {
         if (res.error === ApiErrorCode.OTP_EXPIRED) {
           toast.error(i18n.t('auth.otp.error.otpExpired'));
-        } else if (res.error === ApiErrorCode.INVALID_OTP) {
-          toast.error(i18n.t('auth.otp.error.invalidOtp'));
-        } else {
-          toast.error(i18n.t('common.error.somethingWentWrong'));
+          return otpForm.reset();
         }
-        otpForm.reset();
-        return;
+        if (res.error === ApiErrorCode.INVALID_OTP)
+          return toast.error(i18n.t('auth.otp.error.invalidOtp'));
+        return toast.error(i18n.t('common.error.somethingWentWrong'));
       }
       const { accessToken, shouldShowUsernameForm } = res;
       if (accessToken) {
@@ -149,12 +173,31 @@ export const useAuthForm = (onFinish?: () => void) => {
         ...(data.email ? { email: data.email } : {}),
         ...(data.username ? { username: data.username } : {}),
       };
-      if (Object.keys(payload).length > 0) {
-        await rcClient.auth.updateProfile(payload);
+      if (Object.keys(payload).length === 0) {
+        onFinish?.();
+        return;
+      }
+      const res = await rcClient.auth.updateProfile(payload);
+      profileForm.clearErrors();
+      if (res.error) {
+        if (
+          res.error === ApiErrorCode.UNIQUE_FIELDS_TAKEN &&
+          res.fields?.length
+        ) {
+          for (const field of res.fields) {
+            profileForm.setError(field as keyof ProfileFormValues, {
+              type: 'taken',
+              message: i18n.t('auth.profile.error.fieldTaken'),
+            });
+          }
+          return;
+        }
+        toast.error(i18n.t('common.error.somethingWentWrong'));
+        return;
       }
       onFinish?.();
     },
-    [onFinish],
+    [onFinish, profileForm, toast],
   );
 
   const skipProfile = useCallback(() => {
