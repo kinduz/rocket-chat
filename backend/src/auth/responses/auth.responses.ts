@@ -27,4 +27,7 @@ export class VerifyOtpResponse {
 
   @ApiPropertyOptional({ type: 'string' })
   message?: string;
+
+  @ApiPropertyOptional({ type: 'boolean' })
+  shouldShowUsernameForm?: boolean;
 }

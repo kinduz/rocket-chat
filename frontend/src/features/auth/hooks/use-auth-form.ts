@@ -1,7 +1,6 @@
 import { useToast } from '@app/shared';
 import { ACCESS_TOKEN_KEY, ApiErrorCode, rcClient } from '@app/shared/api';
 import i18n from '@app/shared/i18n/i18n';
-import { ROUTES } from '@app/shared/navigation';
 import { yupResolver } from '@hookform/resolvers/yup';
 import Cookies from 'js-cookie';
 import { useCallback, useEffect, useState } from 'react';
@@ -9,8 +8,9 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useAsyncFn } from 'react-use';
 import * as yup from 'yup';
+import type { ProfileFormValues } from '../ui/auth-third-step';
 
-type AuthStep = 'phone' | 'otp';
+export type AuthStep = 'phone' | 'otp' | 'profile';
 
 type PhoneFormValues = { phone: string };
 type OtpFormValues = { otp: string };
@@ -26,7 +26,7 @@ const otpSchema = yup.object({
     .length(6, () => i18n.t('auth.validation.otpLength')),
 });
 
-export const useAuthForm = () => {
+export const useAuthForm = (onFinish?: () => void) => {
   const {
     i18n: { language },
   } = useTranslation();
@@ -47,6 +47,10 @@ export const useAuthForm = () => {
   const otpForm = useForm<OtpFormValues>({
     resolver: yupResolver(otpSchema),
     defaultValues: { otp: '' },
+  });
+
+  const profileForm = useForm<ProfileFormValues>({
+    defaultValues: { email: '', username: '' },
   });
 
   const handlePhoneValidate = useCallback(
@@ -130,13 +134,32 @@ export const useAuthForm = () => {
         otpForm.reset();
         return;
       }
-      const { accessToken } = res;
+      const { accessToken, shouldShowUsernameForm } = res;
       if (accessToken) {
         Cookies.set(ACCESS_TOKEN_KEY, accessToken, { path: '/' });
       }
+      shouldShowUsernameForm ? setStep('profile') : onFinish?.();
     },
-    [phone, otpForm],
+    [phone, otpForm, onFinish],
   );
+
+  const [updateProfileState, saveProfile] = useAsyncFn(
+    async (data: ProfileFormValues) => {
+      const payload = {
+        ...(data.email ? { email: data.email } : {}),
+        ...(data.username ? { username: data.username } : {}),
+      };
+      if (Object.keys(payload).length > 0) {
+        await rcClient.auth.updateProfile(payload);
+      }
+      onFinish?.();
+    },
+    [onFinish],
+  );
+
+  const skipProfile = useCallback(() => {
+    onFinish?.();
+  }, [onFinish]);
 
   const goBack = useCallback(() => {
     setStep('phone');
@@ -145,16 +168,21 @@ export const useAuthForm = () => {
 
   return {
     step,
+    setStep,
     phone,
     ttlMin,
     phoneForm,
     otpForm,
+    profileForm,
     sendOtpState,
     sendOtp,
     resendOtpState,
     resendOtp,
     verifyOtpState,
     verifyOtp,
+    updateProfileState,
+    saveProfile,
+    skipProfile,
     goBack,
     handlePhoneValidate,
     otpCode,

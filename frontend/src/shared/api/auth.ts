@@ -16,6 +16,14 @@ export class AuthResource extends Resource {
     );
     return data;
   }
+
+  async updateProfile(req: UpdateProfileRequest): Promise<UpdateProfileResponse> {
+    const { data } = await this.client.put<UpdateProfileResponse>(
+      '/profile',
+      req,
+    );
+    return data;
+  }
 }
 
 export type SendOtpRequest = {
@@ -36,4 +44,12 @@ export type VerifyOtpRequest = {
 export type VerifyOtpResponse = R<{
   accessToken?: string;
   message?: string;
+  shouldShowUsernameForm?: boolean;
 }>;
+
+export type UpdateProfileRequest = {
+  email?: string;
+  username?: string;
+};
+
+export type UpdateProfileResponse = R<{ success: boolean }>;

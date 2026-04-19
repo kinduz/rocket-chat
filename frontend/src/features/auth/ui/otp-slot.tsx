@@ -1,4 +1,4 @@
-import { cn } from '@app/lib/utils';
+import { cn } from '@app/shared/lib/utils';
 import type { SlotProps } from 'input-otp';
 
 export const OtpSlot = ({ char, isActive, hasFakeCaret }: SlotProps) => (

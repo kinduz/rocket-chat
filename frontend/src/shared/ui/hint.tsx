@@ -1,4 +1,4 @@
-import { cn } from '@app/lib/utils';
+import { cn } from '@app/shared/lib/utils';
 import { Tooltip } from 'radix-ui';
 import type { ReactNode } from 'react';
 
@@ -21,14 +21,22 @@ export const Hint = ({ content, className }: HintProps) => (
           )}
           aria-label="hint"
         >
-          <svg width="10" height="11" viewBox="0 0 10 11" fill="currentColor" aria-hidden="true">
+          <svg
+            width="10"
+            height="11"
+            viewBox="0 0 10 11"
+            fill="currentColor"
+            aria-hidden="true"
+          >
             <text
               x="5"
               y="9.5"
               textAnchor="middle"
               fontSize="11"
               fontFamily="system-ui, sans-serif"
-            >?</text>
+            >
+              ?
+            </text>
           </svg>
         </button>
       </Tooltip.Trigger>

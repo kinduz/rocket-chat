@@ -29,6 +29,16 @@
         "alreadySent": "Code was already sent, please try again later"
       }
     },
+    "profile": {
+      "title": "Almost there!",
+      "subtitle": "Fill in your details or skip for now",
+      "emailLabel": "Email",
+      "emailPlaceholder": "Enter your email",
+      "usernameLabel": "Username",
+      "usernamePlaceholder": "Enter your username",
+      "saveButton": "Save",
+      "skipButton": "Skip"
+    },
     "validation": {
       "phoneRequired": "Enter your phone number",
       "phoneInvalid": "Invalid phone number",

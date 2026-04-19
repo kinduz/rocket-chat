@@ -29,6 +29,16 @@
         "alreadySent": "Код уже был отправлен, попробуйте позже"
       }
     },
+    "profile": {
+      "title": "Почти готово!",
+      "subtitle": "Заполните данные или пропустите",
+      "emailLabel": "Email",
+      "emailPlaceholder": "Введите email",
+      "usernameLabel": "Имя пользователя",
+      "usernamePlaceholder": "Введите имя пользователя",
+      "saveButton": "Сохранить",
+      "skipButton": "Пропустить"
+    },
     "validation": {
       "phoneRequired": "Введите номер телефона",
       "phoneInvalid": "Некорректный номер телефона",

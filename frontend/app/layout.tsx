@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import { Geist, Roboto } from 'next/font/google';
 import './globals.css';
-import { cn } from '@app/lib/utils';
 import { I18nInitializer } from '@app/shared/i18n';
+import { cn } from '@app/shared/lib/utils';
 import { ThemeProvider, Toaster } from '@app/shared/ui';
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });

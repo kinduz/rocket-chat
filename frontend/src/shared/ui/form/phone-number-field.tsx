@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@app/lib/utils';
+import { cn } from '@app/shared/lib/utils';
 import type { ErrorMessageType } from '@app/shared/types';
 import isoCountries from 'i18n-iso-countries';
 import enLocale from 'i18n-iso-countries/langs/en.json';
@@ -50,13 +50,19 @@ export const PhoneNumberField = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { i18n } = useTranslation();
 
-  const { inputValue, handlePhoneValueChange, inputRef, country, setCountry, phone } =
-    usePhoneInput({
-      defaultCountry,
-      countries: fixedCountries,
-      value,
-      onChange: ({ phone: p }) => onChange?.(p),
-    });
+  const {
+    inputValue,
+    handlePhoneValueChange,
+    inputRef,
+    country,
+    setCountry,
+    phone,
+  } = usePhoneInput({
+    defaultCountry,
+    countries: fixedCountries,
+    value,
+    onChange: ({ phone: p }) => onChange?.(p),
+  });
 
   const { iso2 } = country;
 

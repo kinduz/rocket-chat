@@ -1,13 +1,6 @@
-import { HttpService } from '@nestjs/axios';
-import {
-  BadRequestException,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import { lastValueFrom } from 'rxjs';
-import { ERRORS_MSG } from 'src/shared';
 import { Repository } from 'typeorm';
 import { UserService } from '../user/user.service';
 import { OtpCode } from './entities/otp-code.entity';
@@ -25,7 +18,6 @@ export class AuthService {
     private readonly otpRepository: Repository<OtpCode>,
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
-    private readonly httpService: HttpService,
   ) {}
 
   async sendOtp(phone: string): Promise<SendOtpResponse> {
@@ -54,12 +46,8 @@ export class AuthService {
       where: { phone },
     });
 
-    if (!otp) {
-      throw new UnauthorizedException('Invalid OTP code');
-    }
-
-    if (otp.code !== code) {
-      throw new UnauthorizedException('Invalid OTP code');
+    if (!otp || otp.code !== code) {
+      throw new UnauthorizedException('invalid_otp');
     }
 
     if (otp.expiresAt < new Date()) {
@@ -79,14 +67,16 @@ export class AuthService {
     await this.otpRepository.remove(otp);
 
     let user = await this.userService.findByPhone(phone);
-    console.log('user', user);
+    let shouldShowUsernameForm = false;
 
     if (!user) {
       user = await this.userService.create(phone);
+      shouldShowUsernameForm = true;
     }
 
     return {
       accessToken: this.signToken(user.id, user.phone),
+      shouldShowUsernameForm,
     };
   }
 
