@@ -66,7 +66,7 @@ export const useAuthForm = (onFinish?: () => void) => {
 
   const profileForm = useForm<ProfileFormValues>({
     resolver: yupResolver(profileSchema) as never,
-    defaultValues: { email: '', username: '' },
+    defaultValues: { email: '', username: '', avatar: null },
   });
 
   const handlePhoneValidate = useCallback(
@@ -158,11 +158,11 @@ export const useAuthForm = (onFinish?: () => void) => {
           return toast.error(i18n.t('auth.otp.error.invalidOtp'));
         return toast.error(i18n.t('common.error.somethingWentWrong'));
       }
-      const { accessToken, shouldShowUsernameForm } = res;
+      const { accessToken, isReg } = res;
       if (accessToken) {
         Cookies.set(ACCESS_TOKEN_KEY, accessToken, { path: '/' });
       }
-      shouldShowUsernameForm ? setStep('profile') : onFinish?.();
+      isReg ? setStep('profile') : onFinish?.();
     },
     [phone, otpForm, onFinish],
   );
@@ -172,6 +172,7 @@ export const useAuthForm = (onFinish?: () => void) => {
       const payload = {
         ...(data.email ? { email: data.email } : {}),
         ...(data.username ? { username: data.username } : {}),
+        ...(data.avatar ? { avatar: data.avatar } : {}),
       };
       if (Object.keys(payload).length === 0) {
         onFinish?.();

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { SupportService } from '../internal/support.service';
 import { ApiErrorCode, ApiException } from '../shared';
 import { UserService } from '../user/user.service';
 import { OtpCode } from './entities/otp-code.entity';
@@ -19,6 +20,7 @@ export class AuthService {
     private readonly otpRepository: Repository<OtpCode>,
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
+    private readonly supportService: SupportService,
   ) {}
 
   async sendOtp(phone: string): Promise<SendOtpResponse> {
@@ -59,16 +61,17 @@ export class AuthService {
     await this.otpRepository.remove(otp);
 
     let user = await this.userService.findByPhone(phone);
-    let shouldShowUsernameForm = false;
+    let isReg = false;
 
     if (!user) {
       user = await this.userService.create(phone);
-      shouldShowUsernameForm = true;
+      isReg = true;
+      await this.supportService.onboardUser(user.id);
     }
 
     return {
       accessToken: this.signToken(user.id, user.phone),
-      shouldShowUsernameForm,
+      isReg,
     };
   }
 

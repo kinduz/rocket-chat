@@ -17,6 +17,10 @@ async function bootstrap() {
     .setTitle('Rocket Chat API')
     .setDescription('API documentation for Rocket Chat')
     .setVersion('1.0')
+    .addBearerAuth(
+      { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+      'access-token',
+    )
     .build();
   const documentFactory = () => SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, documentFactory);

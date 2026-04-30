@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { InternalModule } from '../internal/internal.module';
 import { UserModule } from '../user/user.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -20,6 +21,7 @@ import { OtpCode } from './entities/otp-code.entity';
       }),
     }),
     UserModule,
+    InternalModule,
   ],
   controllers: [AuthController],
   providers: [AuthService],

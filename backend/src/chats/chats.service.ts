@@ -1,0 +1,189 @@
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { In, Repository } from 'typeorm';
+import { S3Service } from '../shared/s3';
+import { User } from '../user/entities/user.entity';
+import { SearchItemDTO } from './dto';
+import { Chat, ChatMember } from './entities';
+
+type ChatRow = {
+  c_id: string;
+  c_type: 'direct' | 'group';
+  c_name: string | null;
+  c_lastMessageText: string | null;
+  c_lastMessageAt: Date | null;
+  c_lastMessageSenderId: string | null;
+  u_username: string | null;
+  u_avatarKey: string | null;
+};
+
+type UserRow = {
+  u_id: string;
+  u_username: string | null;
+  u_email: string | null;
+  u_avatarKey: string | null;
+};
+
+@Injectable()
+export class ChatsService {
+  constructor(
+    @InjectRepository(Chat)
+    private readonly chatRepository: Repository<Chat>,
+    @InjectRepository(ChatMember)
+    private readonly chatMemberRepository: Repository<ChatMember>,
+    private readonly s3: S3Service,
+  ) {}
+
+  async findOrCreateDirectChat(
+    userAId: string,
+    userBId: string,
+  ): Promise<string> {
+    const existing = await this.chatRepository
+      .createQueryBuilder('c')
+      .innerJoin(
+        'chat_members',
+        'a',
+        'a.chat_id = c.id AND a.user_id = :a',
+        { a: userAId },
+      )
+      .innerJoin(
+        'chat_members',
+        'b',
+        'b.chat_id = c.id AND b.user_id = :b',
+        { b: userBId },
+      )
+      .where("c.type = 'direct'")
+      .select('c.id', 'id')
+      .getRawOne<{ id: string }>();
+
+    if (existing) return existing.id;
+
+    const chat = await this.chatRepository.save(
+      this.chatRepository.create({ type: 'direct', name: null }),
+    );
+    await this.chatMemberRepository.save([
+      this.chatMemberRepository.create({ chatId: chat.id, userId: userAId }),
+      this.chatMemberRepository.create({ chatId: chat.id, userId: userBId }),
+    ]);
+    return chat.id;
+  }
+
+  async deleteUserChats(userId: string): Promise<void> {
+    const rows = await this.chatMemberRepository.find({
+      where: { userId },
+      select: { chatId: true },
+    });
+    const chatIds = rows.map((r) => r.chatId);
+    if (chatIds.length === 0) return;
+
+    await this.chatMemberRepository.delete({ chatId: In(chatIds) });
+    await this.chatRepository.delete({ id: In(chatIds) });
+  }
+
+  async getChats(userId: string, q?: string): Promise<SearchItemDTO[]> {
+    const query = q?.trim();
+    const like = query
+      ? `%${query.replace(/[\\%_]/g, (m) => `\\${m}`)}%`
+      : null;
+
+    const chatQB = this.chatRepository
+      .createQueryBuilder('c')
+      .innerJoin(
+        'chat_members',
+        'me',
+        'me.chat_id = c.id AND me.user_id = :userId',
+        { userId },
+      )
+      .leftJoin(
+        'chat_members',
+        'other',
+        "other.chat_id = c.id AND c.type = 'direct' AND other.user_id != :userId",
+        { userId },
+      )
+      .leftJoin(User, 'u', 'u.id = other.user_id')
+      .select([
+        'c.id AS c_id',
+        'c.type AS c_type',
+        'c.name AS c_name',
+        'c.last_message_text AS "c_lastMessageText"',
+        'c.last_message_at AS "c_lastMessageAt"',
+        'c.last_message_sender_id AS "c_lastMessageSenderId"',
+        'u.username AS u_username',
+        'u.avatar_key AS "u_avatarKey"',
+      ])
+      .orderBy('c.last_message_at', 'DESC', 'NULLS LAST')
+      .limit(50);
+
+    if (like) {
+      chatQB.where(
+        `(c.type = 'direct' AND (u.username ILIKE :like OR u.email ILIKE :like))
+         OR (c.type = 'group' AND c.name ILIKE :like)`,
+        { like },
+      );
+    }
+
+    const chatRows = await chatQB.getRawMany<ChatRow>();
+    const items: SearchItemDTO[] = chatRows.map((r) =>
+      this.chatToItem(r, userId),
+    );
+
+    if (!like) return items;
+
+    const userRows = await this.chatRepository.manager
+      .createQueryBuilder(User, 'u')
+      .where('u.id != :userId', { userId })
+      .andWhere('(u.username ILIKE :like OR u.email ILIKE :like)', { like })
+      .andWhere(
+        `u.id NOT IN (
+          SELECT other.user_id
+          FROM chat_members me
+          JOIN chats c ON c.id = me.chat_id AND c.type = 'direct'
+          JOIN chat_members other ON other.chat_id = c.id AND other.user_id != :userId
+          WHERE me.user_id = :userId
+        )`,
+        { userId },
+      )
+      .select([
+        'u.id AS u_id',
+        'u.username AS u_username',
+        'u.email AS u_email',
+        'u.avatar_key AS "u_avatarKey"',
+      ])
+      .orderBy('u.username', 'ASC')
+      .limit(20)
+      .getRawMany<UserRow>();
+
+    items.push(...userRows.map((r) => this.userToItem(r)));
+    return items;
+  }
+
+  private chatToItem(row: ChatRow, userId: string): SearchItemDTO {
+    const isDirect = row.c_type === 'direct';
+    return {
+      kind: 'chat',
+      id: row.c_id,
+      name: (isDirect ? row.u_username : row.c_name) ?? '',
+      avatarUrl:
+        isDirect && row.u_avatarKey
+          ? this.s3.getPublicUrl(row.u_avatarKey)
+          : null,
+      lastMessage: row.c_lastMessageText
+        ? {
+            text: row.c_lastMessageText,
+            at: (row.c_lastMessageAt ?? new Date()).toISOString(),
+            fromMe: row.c_lastMessageSenderId === userId,
+          }
+        : null,
+    };
+  }
+
+  private userToItem(row: UserRow): SearchItemDTO {
+    return {
+      kind: 'user',
+      id: row.u_id,
+      name: row.u_username ?? row.u_email ?? '',
+      avatarUrl: row.u_avatarKey ? this.s3.getPublicUrl(row.u_avatarKey) : null,
+      lastMessage: null,
+    };
+  }
+}

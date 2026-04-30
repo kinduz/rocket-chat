@@ -10,6 +10,7 @@ export enum ApiErrorCode {
   SEND_SMS_ERROR = 'send_sms_error',
   TOO_MANY_REQUESTS = 'too_many_requests',
   UNIQUE_FIELDS_TAKEN = 'unique_fields_taken',
+  USER_NOT_FOUND = 'user_not_found',
 }
 
 type ApiErrorDescriptor = {
@@ -53,6 +54,10 @@ const API_ERRORS: Record<ApiErrorCode, ApiErrorDescriptor> = {
   [ApiErrorCode.UNIQUE_FIELDS_TAKEN]: {
     status: HttpStatus.CONFLICT,
     message: 'Some fields are already taken',
+  },
+  [ApiErrorCode.USER_NOT_FOUND]: {
+    status: HttpStatus.NOT_FOUND,
+    message: 'User not found',
   },
 };
 

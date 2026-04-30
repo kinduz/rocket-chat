@@ -1,12 +1,14 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 import { AuthModule } from './auth/auth.module';
 import { OtpCode } from './auth/entities/otp-code.entity';
-import { ChatsController } from './chats/chats.controller';
+import { ChatsModule } from './chats/chats.module';
+import { Chat, ChatMember } from './chats/entities';
+import { InternalModule } from './internal/internal.module';
 import { ProfileModule } from './profile/profile.module';
+import { S3Module } from './shared/s3';
 import { User } from './user/entities/user.entity';
 import { UserModule } from './user/user.module';
 
@@ -22,15 +24,19 @@ import { UserModule } from './user/user.module';
         username: config.get<string>('DB_USER'),
         password: config.get<string>('DB_PASSWORD'),
         database: config.get<string>('DB_NAME'),
-        entities: [User, OtpCode],
+        entities: [User, OtpCode, Chat, ChatMember],
+        namingStrategy: new SnakeNamingStrategy(),
         synchronize: config.get<string>('NODE_ENV') !== 'production',
       }),
     }),
+    S3Module,
     UserModule,
     AuthModule,
     ProfileModule,
+    ChatsModule,
+    InternalModule,
   ],
-  controllers: [AppController, ChatsController],
-  providers: [AppService],
+  controllers: [],
+  providers: [],
 })
 export class AppModule {}
