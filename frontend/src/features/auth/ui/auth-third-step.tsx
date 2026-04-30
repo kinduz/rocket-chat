@@ -1,12 +1,14 @@
 'use client';
 
+import { ImageUpload } from '@app/shared';
 import { Button } from '@app/shared/ui/button';
-import { type UseFormReturn, useWatch } from 'react-hook-form';
+import { Controller, type UseFormReturn, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
 export type ProfileFormValues = {
   email: string;
   username: string;
+  avatar: File | null;
 };
 
 type AuthThirdStepProps = {
@@ -30,12 +32,13 @@ export const AuthThirdStep = ({
     formState: { errors },
   } = form;
 
-  const [emailValue, usernameValue] = useWatch({
+  const [emailValue, usernameValue, avatarValue] = useWatch({
     control,
-    name: ['email', 'username'],
+    name: ['email', 'username', 'avatar'],
   });
   const isSaveDisabled =
-    isLoading || (!emailValue?.trim() && !usernameValue?.trim());
+    isLoading ||
+    (!emailValue?.trim() && !usernameValue?.trim() && !avatarValue);
 
   const inputClass = (hasError: boolean) =>
     `w-full h-[52px] rounded-xl border bg-transparent px-4 text-base outline-none transition-colors ${
@@ -54,8 +57,20 @@ export const AuthThirdStep = ({
           {t('auth.profile.subtitle')}
         </span>
 
-        <div className="mt-[24px] max-md:mt-6 w-full flex flex-col gap-4 w-80">
-          <div className="flex flex-col gap-1.5">
+        <div className="mt-[24px] max-md:mt-6 w-full flex flex-col  items-center gap-4 w-80">
+          <Controller
+            control={control}
+            name="avatar"
+            render={({ field }) => (
+              <ImageUpload
+                className="size-36"
+                value={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
+
+          <div className="flex flex-col gap-1.5 w-full">
             <label className="text-sm text-[#AAAAAA]">
               {t('auth.profile.emailLabel')}
             </label>
@@ -72,7 +87,7 @@ export const AuthThirdStep = ({
             )}
           </div>
 
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5 w-full">
             <label className="text-sm text-[#AAAAAA]">
               {t('auth.profile.usernameLabel')}
             </label>

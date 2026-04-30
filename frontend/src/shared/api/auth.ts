@@ -18,9 +18,15 @@ export class AuthResource extends Resource {
   }
 
   async updateProfile(req: UpdateProfileRequest): Promise<UpdateProfileResponse> {
+    const formData = new FormData();
+    if (req.email) formData.append('email', req.email);
+    if (req.username) formData.append('username', req.username);
+    if (req.avatar) formData.append('avatar', req.avatar);
+
     const { data } = await this.client.put<UpdateProfileResponse>(
       '/profile',
-      req,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
     );
     return data;
   }
@@ -50,6 +56,7 @@ export type VerifyOtpResponse = R<{
 export type UpdateProfileRequest = {
   email?: string;
   username?: string;
+  avatar?: File;
 };
 
 export type UpdateProfileResponse = R<{ success: boolean }>;

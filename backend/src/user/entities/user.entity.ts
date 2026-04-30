@@ -20,6 +20,12 @@ export class User {
   @Column({ unique: true, nullable: true })
   email: string;
 
+  @Column({ nullable: true })
+  avatarUrl: string;
+
+  @Column({ nullable: true })
+  avatarKey: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

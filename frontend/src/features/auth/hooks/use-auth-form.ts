@@ -66,7 +66,7 @@ export const useAuthForm = (onFinish?: () => void) => {
 
   const profileForm = useForm<ProfileFormValues>({
     resolver: yupResolver(profileSchema) as never,
-    defaultValues: { email: '', username: '' },
+    defaultValues: { email: '', username: '', avatar: null },
   });
 
   const handlePhoneValidate = useCallback(
@@ -172,6 +172,7 @@ export const useAuthForm = (onFinish?: () => void) => {
       const payload = {
         ...(data.email ? { email: data.email } : {}),
         ...(data.username ? { username: data.username } : {}),
+        ...(data.avatar ? { avatar: data.avatar } : {}),
       };
       if (Object.keys(payload).length === 0) {
         onFinish?.();

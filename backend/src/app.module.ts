@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { OtpCode } from './auth/entities/otp-code.entity';
 import { ChatsController } from './chats/chats.controller';
 import { ProfileModule } from './profile/profile.module';
+import { S3Module } from './shared/s3';
 import { User } from './user/entities/user.entity';
 import { UserModule } from './user/user.module';
 
@@ -26,6 +27,7 @@ import { UserModule } from './user/user.module';
         synchronize: config.get<string>('NODE_ENV') !== 'production',
       }),
     }),
+    S3Module,
     UserModule,
     AuthModule,
     ProfileModule,

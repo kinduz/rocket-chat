@@ -1,4 +1,4 @@
-import { PhoneNumberField } from '@app/shared';
+import { ImageUpload, PhoneNumberField } from '@app/shared';
 import { Button } from '@app/shared/ui/button';
 import type { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
