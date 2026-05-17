@@ -7,7 +7,7 @@ import { useEffect } from 'react';
 export function StoreHydrator({ profile }: { profile: Profile }) {
   useEffect(() => {
     if (!profile) return;
-    useAppStore.setState({ profile, isBootstrapped: true });
+    useAppStore.setState({ profile });
   }, [profile]);
 
   return null;

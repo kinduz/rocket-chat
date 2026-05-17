@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Geist, Roboto } from 'next/font/google';
 import './globals.css';
 import { getUserProfile } from '@app/entities/user';
-import { ACCESS_TOKEN_KEY, type Profile, rcClient } from '@app/shared';
+import { ACCESS_TOKEN_KEY, type Profile } from '@app/shared';
 import { getRcClient } from '@app/shared/api/server';
 import { I18nInitializer } from '@app/shared/i18n';
 import { cn } from '@app/shared/lib/utils';

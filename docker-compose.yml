@@ -44,7 +44,8 @@ services:
       - "3000:3000"
     networks:
       - rocket-chat-network
-
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
   backend:
     build:
       context: ./backend
