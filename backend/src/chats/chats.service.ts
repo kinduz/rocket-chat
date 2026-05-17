@@ -34,32 +34,41 @@ export class ChatsService {
     private readonly s3: S3Service,
   ) {}
 
-  async findOrCreateDirectChat(
+  async findDirectChat(
     userAId: string,
     userBId: string,
-  ): Promise<string> {
-    const existing = await this.chatRepository
+  ): Promise<string | null> {
+    const row = await this.chatRepository
       .createQueryBuilder('c')
-      .innerJoin(
-        'chat_members',
-        'a',
-        'a.chat_id = c.id AND a.user_id = :a',
-        { a: userAId },
-      )
-      .innerJoin(
-        'chat_members',
-        'b',
-        'b.chat_id = c.id AND b.user_id = :b',
-        { b: userBId },
-      )
+      .innerJoin('chat_members', 'a', 'a.chat_id = c.id AND a.user_id = :a', {
+        a: userAId,
+      })
+      .innerJoin('chat_members', 'b', 'b.chat_id = c.id AND b.user_id = :b', {
+        b: userBId,
+      })
       .where("c.type = 'direct'")
       .select('c.id', 'id')
       .getRawOne<{ id: string }>();
 
-    if (existing) return existing.id;
+    return row?.id ?? null;
+  }
+
+  async createDirectChat(
+    userAId: string,
+    userBId: string,
+    opts?: { firstMessage?: { text: string; senderId: string } },
+  ): Promise<string> {
+    const now = new Date();
+    const firstMessage = opts?.firstMessage;
 
     const chat = await this.chatRepository.save(
-      this.chatRepository.create({ type: 'direct', name: null }),
+      this.chatRepository.create({
+        type: 'direct',
+        name: null,
+        lastMessageText: firstMessage?.text ?? null,
+        lastMessageSenderId: firstMessage?.senderId ?? null,
+        lastMessageAt: firstMessage ? now : null,
+      }),
     );
     await this.chatMemberRepository.save([
       this.chatMemberRepository.create({ chatId: chat.id, userId: userAId }),
@@ -123,8 +132,8 @@ export class ChatsService {
     }
 
     const chatRows = await chatQB.getRawMany<ChatRow>();
-    const items: SearchItemDTO[] = chatRows.map((r) =>
-      this.chatToItem(r, userId),
+    const items: SearchItemDTO[] = await Promise.all(
+      chatRows.map((r) => this.chatToItem(r, userId)),
     );
 
     if (!like) return items;
@@ -153,11 +162,14 @@ export class ChatsService {
       .limit(20)
       .getRawMany<UserRow>();
 
-    items.push(...userRows.map((r) => this.userToItem(r)));
+    items.push(...(await Promise.all(userRows.map((r) => this.userToItem(r)))));
     return items;
   }
 
-  private chatToItem(row: ChatRow, userId: string): SearchItemDTO {
+  private async chatToItem(
+    row: ChatRow,
+    userId: string,
+  ): Promise<SearchItemDTO> {
     const isDirect = row.c_type === 'direct';
     return {
       kind: 'chat',
@@ -165,7 +177,7 @@ export class ChatsService {
       name: (isDirect ? row.u_username : row.c_name) ?? '',
       avatarUrl:
         isDirect && row.u_avatarKey
-          ? this.s3.getPublicUrl(row.u_avatarKey)
+          ? await this.s3.getPresignedDownloadUrl(row.u_avatarKey)
           : null,
       lastMessage: row.c_lastMessageText
         ? {
@@ -177,12 +189,14 @@ export class ChatsService {
     };
   }
 
-  private userToItem(row: UserRow): SearchItemDTO {
+  private async userToItem(row: UserRow): Promise<SearchItemDTO> {
     return {
       kind: 'user',
       id: row.u_id,
       name: row.u_username ?? row.u_email ?? '',
-      avatarUrl: row.u_avatarKey ? this.s3.getPublicUrl(row.u_avatarKey) : null,
+      avatarUrl: row.u_avatarKey
+        ? await this.s3.getPresignedDownloadUrl(row.u_avatarKey)
+        : null,
       lastMessage: null,
     };
   }

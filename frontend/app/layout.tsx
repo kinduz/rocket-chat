@@ -6,7 +6,12 @@ import { ACCESS_TOKEN_KEY, type Profile } from '@app/shared';
 import { getRcClient } from '@app/shared/api/server';
 import { I18nInitializer } from '@app/shared/i18n';
 import { cn } from '@app/shared/lib/utils';
-import { StoreHydrator, ThemeProvider, Toaster } from '@app/shared/ui';
+import {
+  QueryProvider,
+  StoreHydrator,
+  ThemeProvider,
+  Toaster,
+} from '@app/shared/ui';
 import { cookies } from 'next/headers';
 import type { PropsWithChildren } from 'react';
 
@@ -37,10 +42,12 @@ export default async function RootLayout({ children }: PropsWithChildren) {
         className={`${roboto.className} bg-background text-foreground min-h-screen`}
       >
         <ThemeProvider>
-          <StoreHydrator profile={userProfile as Profile} />
-          <I18nInitializer />
-          {children}
-          <Toaster />
+          <QueryProvider>
+            <StoreHydrator profile={userProfile as Profile} />
+            <I18nInitializer />
+            {children}
+            <Toaster />
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>

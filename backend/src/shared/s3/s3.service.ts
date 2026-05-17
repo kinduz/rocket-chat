@@ -36,6 +36,8 @@ export class S3Service {
         secretAccessKey: config.getOrThrow<string>('S3_SECRET_ACCESS_KEY'),
       },
       forcePathStyle: false,
+      requestChecksumCalculation: 'WHEN_REQUIRED',
+      responseChecksumValidation: 'WHEN_REQUIRED',
     });
   }
 

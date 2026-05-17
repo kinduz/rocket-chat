@@ -32,6 +32,8 @@ export class SupportService {
         phone: this.config.get<string>('SUPPORT_PHONE', '+00000000000'),
         username: this.config.get<string>('SUPPORT_USERNAME', 'support'),
         email: this.config.get<string>('SUPPORT_EMAIL') ?? undefined,
+        avatarUrl: this.config.get<string>('SUPPORT_AVATAR_URL') ?? undefined,
+        avatarKey: this.config.get<string>('SUPPORT_AVATAR_KEY') ?? undefined,
       }),
     );
   }
@@ -54,6 +56,14 @@ export class SupportService {
     }
     if (support.id === newUserId) return;
 
-    await this.chats.findOrCreateDirectChat(newUserId, support.id);
+    await this.chats.createDirectChat(newUserId, support.id, {
+      firstMessage: {
+        text: this.config.get<string>(
+          'SUPPORT_WELCOME_TEXT',
+          'Welcome! This is support. Write us if you need anything.',
+        ),
+        senderId: support.id,
+      },
+    });
   }
 }

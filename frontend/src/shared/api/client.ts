@@ -2,6 +2,7 @@ import axios, { type AxiosInstance } from 'axios';
 import Cookies from 'js-cookie';
 
 import { AuthResource } from './auth';
+import { ChatsResource } from './chats';
 import { ProfileResource } from './profile';
 
 export const ACCESS_TOKEN_KEY = 'accessToken';
@@ -24,6 +25,7 @@ export type RocketChatClientOptions = {
 
 export class RocketChatClient {
   public auth: AuthResource;
+  public chats: ChatsResource;
   public profile: ProfileResource;
 
   private client: AxiosInstance;
@@ -55,6 +57,7 @@ export class RocketChatClient {
     );
 
     this.auth = new AuthResource(this.client);
+    this.chats = new ChatsResource(this.client);
     this.profile = new ProfileResource(this.client);
   }
 }
