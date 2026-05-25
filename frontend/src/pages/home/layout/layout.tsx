@@ -22,7 +22,7 @@ export async function HomeLayout({
   return (
     <HydrationBoundary state={dehydrate(qc)}>
       <div className="h-dvh w-dvw md:p-4">
-        <div className="h-full w-full md:bg-main-content-primary overflow-hidden">
+        <div className="h-full rounded-2xl border-[1px] border-[#202023] w-full md:bg-main-content-primary overflow-hidden">
           {children}
         </div>
       </div>

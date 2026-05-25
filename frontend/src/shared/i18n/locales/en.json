@@ -7,6 +7,17 @@
       "somethingWentWrong": "Something went wrong, please try again later"
     }
   },
+  "home": {
+    "yourChats": "Your chats",
+    "myProfile": "My profile",
+    "chatActions": "Actions",
+    "noMessages": "No messages yet",
+    "noChatSelected": "Select a chat to start messaging",
+    "chatFallbackName": "Chat #{{index}}",
+    "chatName": {
+      "support": "Support team"
+    }
+  },
   "auth": {
     "signin": {
       "title": "Sign In to Rocket chat",

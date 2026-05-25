@@ -7,6 +7,17 @@
       "somethingWentWrong": "Что-то пошло не так, попробуйте позже"
     }
   },
+  "home": {
+    "yourChats": "Ваши чаты",
+    "myProfile": "Мой профиль",
+    "chatActions": "Действия",
+    "noMessages": "Нет сообщений",
+    "noChatSelected": "Выберите чат, чтобы начать общение",
+    "chatFallbackName": "Чат #{{index}}",
+    "chatName": {
+      "support": "Служба поддержки"
+    }
+  },
   "auth": {
     "signin": {
       "title": "Войти в Rocket chat",
