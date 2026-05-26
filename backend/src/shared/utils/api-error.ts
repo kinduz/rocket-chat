@@ -11,6 +11,8 @@ export enum ApiErrorCode {
   TOO_MANY_REQUESTS = 'too_many_requests',
   UNIQUE_FIELDS_TAKEN = 'unique_fields_taken',
   USER_NOT_FOUND = 'user_not_found',
+  CHAT_NOT_FOUND = 'chat_not_found',
+  FORBIDDEN = 'forbidden',
 }
 
 type ApiErrorDescriptor = {
@@ -58,6 +60,14 @@ const API_ERRORS: Record<ApiErrorCode, ApiErrorDescriptor> = {
   [ApiErrorCode.USER_NOT_FOUND]: {
     status: HttpStatus.NOT_FOUND,
     message: 'User not found',
+  },
+  [ApiErrorCode.CHAT_NOT_FOUND]: {
+    status: HttpStatus.NOT_FOUND,
+    message: 'Chat not found',
+  },
+  [ApiErrorCode.FORBIDDEN]: {
+    status: HttpStatus.FORBIDDEN,
+    message: 'Forbidden',
   },
 };
 

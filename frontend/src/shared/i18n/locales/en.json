@@ -23,6 +23,25 @@
       "support": "Support team"
     }
   },
+  "chat": {
+    "empty": "No messages yet",
+    "startNew": "Send the first message to start the conversation",
+    "day": {
+      "today": "Today",
+      "yesterday": "Yesterday"
+    },
+    "actions": {
+      "search": "Search in chat",
+      "collapse": "Collapse profile"
+    },
+    "composer": {
+      "placeholder": "Type a message...",
+      "send": "Send",
+      "attachMenu": "More",
+      "attachFile": "Attach file",
+      "emoji": "Emoji"
+    }
+  },
   "auth": {
     "signin": {
       "title": "Sign In to Rocket chat",

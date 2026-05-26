@@ -60,4 +60,10 @@ export class SearchItemDTO {
     description: 'Only set for kind=chat',
   })
   lastMessage: LastMessagePreviewDTO | null;
+
+  @ApiProperty({
+    description:
+      'Count of incoming unread messages in this chat. 0 for kind=user.',
+  })
+  unreadCount: number;
 }
