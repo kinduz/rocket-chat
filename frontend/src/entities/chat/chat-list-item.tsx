@@ -1,9 +1,10 @@
 'use client';
 
 import type { ChatListItem as ChatListItemType } from '@app/shared/api';
+import { MessageStatusIcon } from '@app/entities/message';
 import { cn } from '@app/shared/lib/utils';
+import { useTypingStore } from '@app/shared/realtime';
 import { Avatar } from '@app/shared/ui';
-import { Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { formatChatTime } from './lib/format-chat-time';
 import { getChatDisplayName } from './lib/get-chat-display-name';
@@ -23,6 +24,10 @@ export const ChatListItem = ({
 }: ChatListItemProps) => {
   const { t } = useTranslation();
   const displayName = getChatDisplayName(chat, index, t);
+  const typingExpiresAt = useTypingStore((s) =>
+    chat.kind === 'chat' ? s.byChat[chat.id] : undefined,
+  );
+  const typing = !!typingExpiresAt && typingExpiresAt > Date.now();
 
   return (
     <button
@@ -49,6 +54,8 @@ export const ChatListItem = ({
           <ChatRowContent
             displayName={displayName}
             lastMessage={chat.lastMessage}
+            unreadCount={chat.unreadCount}
+            typing={typing}
             emptyText={t('home.noMessages')}
           />
         ) : (
@@ -61,13 +68,23 @@ export const ChatListItem = ({
 
 type ChatRowContentProps = {
   displayName: string;
-  lastMessage: { text: string; at: string; fromMe: boolean } | null;
+  lastMessage: {
+    text: string;
+    at: string;
+    fromMe: boolean;
+    delivered: boolean;
+    read: boolean;
+  } | null;
+  unreadCount: number;
+  typing: boolean;
   emptyText: string;
 };
 
 const ChatRowContent = ({
   displayName,
   lastMessage,
+  unreadCount,
+  typing,
   emptyText,
 }: ChatRowContentProps) => (
   <>
@@ -86,10 +103,15 @@ const ChatRowContent = ({
     </div>
 
     <div className="mt-0.5 flex items-center gap-1 text-sm font-medium text-muted-foreground">
-      {lastMessage?.fromMe && (
-        <Check className="size-3.5 shrink-0" aria-hidden />
+      {lastMessage?.fromMe && <MessageStatusIcon message={lastMessage} />}
+      <span className="min-w-0 flex-1 truncate">
+        {typing ? 'typing...' : (lastMessage?.text ?? emptyText)}
+      </span>
+      {unreadCount > 0 && (
+        <span className="ml-1 flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#2683ff] px-1.5 text-xs font-semibold text-white">
+          {unreadCount > 99 ? '99+' : unreadCount}
+        </span>
       )}
-      <span className="truncate">{lastMessage?.text ?? emptyText}</span>
     </div>
   </>
 );

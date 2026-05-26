@@ -15,6 +15,7 @@ import {
 } from 'react';
 import {
   type ChatReadEvent,
+  type ChatDeliveredEvent,
   type ChatSocket,
   type ChatTypingEvent,
   createChatSocket,
@@ -67,6 +68,30 @@ export function ChatSocketProvider({ children }: ChatSocketProviderProps) {
       queryClient.invalidateQueries({ queryKey: chatsKeys.all });
     });
 
+    s.on('chat:delivered', (e: ChatDeliveredEvent) => {
+      const deliveredUntil = new Date(e.lastDeliveredAt).getTime();
+      queryClient.setQueryData<ChatMessage[] | undefined>(
+        messagesKeys.list(e.chatId),
+        (prev) => {
+          if (!prev) return prev;
+          let changed = false;
+          const next = prev.map((m) => {
+            if (
+              m.fromMe &&
+              !m.delivered &&
+              new Date(m.createdAt).getTime() <= deliveredUntil
+            ) {
+              changed = true;
+              return { ...m, delivered: true };
+            }
+            return m;
+          });
+          return changed ? next : prev;
+        },
+      );
+      queryClient.invalidateQueries({ queryKey: chatsKeys.all });
+    });
+
     s.on('chat:read', (e: ChatReadEvent) => {
       const readUntil = new Date(e.lastReadAt).getTime();
       queryClient.setQueryData<ChatMessage[] | undefined>(
@@ -81,13 +106,14 @@ export function ChatSocketProvider({ children }: ChatSocketProviderProps) {
               new Date(m.createdAt).getTime() <= readUntil
             ) {
               changed = true;
-              return { ...m, read: true };
+              return { ...m, delivered: true, read: true };
             }
             return m;
           });
           return changed ? next : prev;
         },
       );
+      queryClient.invalidateQueries({ queryKey: chatsKeys.all });
     });
 
     s.on('chat:typing', (e: ChatTypingEvent) => {

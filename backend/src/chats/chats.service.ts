@@ -15,6 +15,8 @@ type ChatRow = {
   c_lastMessageText: string | null;
   c_lastMessageAt: Date | null;
   c_lastMessageSenderId: string | null;
+  c_lastMessageDeliveredAt: Date | null;
+  c_lastMessageReadAt: Date | null;
   c_unreadCount: string | number | null;
   u_username: string | null;
   u_firstName: string | null;
@@ -74,18 +76,20 @@ export class ChatsService {
       where.createdAt = LessThan(new Date(opts.before));
     }
 
-    const [rows, otherLastReadAt] = await Promise.all([
+    const [rows, otherReceiptTimes] = await Promise.all([
       this.messageRepository.find({
         where,
         order: { createdAt: 'DESC' },
         take: limit,
       }),
-      this.getOtherLastReadAt(userId, chatId),
+      this.getOtherReceiptTimes(userId, chatId),
     ]);
+
+    await this.markIncomingDelivered(userId, chatId, rows);
 
     return rows
       .reverse()
-      .map((m) => this.toMessageDTO(m, userId, otherLastReadAt));
+      .map((m) => this.toMessageDTO(m, userId, otherReceiptTimes));
   }
 
   async markRead(
@@ -112,11 +116,28 @@ export class ChatsService {
     }
 
     const next = message.createdAt;
-    if (!member.lastReadAt || member.lastReadAt < next) {
+    const shouldUpdateDelivered =
+      !member.lastDeliveredAt || member.lastDeliveredAt < next;
+    const shouldUpdateRead = !member.lastReadAt || member.lastReadAt < next;
+
+    if (shouldUpdateDelivered || shouldUpdateRead) {
+      if (shouldUpdateDelivered) {
+        member.lastDeliveredAt = next;
+      }
       member.lastReadAt = next;
       await this.chatMemberRepository.save(member);
 
       const recipients = await this.getOtherMemberIds(chatId, userId);
+      if (shouldUpdateDelivered) {
+        this.gateway.emitChatDelivered(
+          {
+            chatId,
+            userId,
+            lastDeliveredAt: next.toISOString(),
+          },
+          recipients,
+        );
+      }
       this.gateway.emitChatRead(
         {
           chatId,
@@ -130,21 +151,69 @@ export class ChatsService {
     return { chatId, lastReadAt: (member.lastReadAt ?? next).toISOString() };
   }
 
-  private async getOtherLastReadAt(
+  private async markIncomingDelivered(
+    userId: string,
+    chatId: string,
+    messages: Message[],
+  ): Promise<void> {
+    const latestIncoming = messages
+      .filter((m) => m.senderId !== userId)
+      .reduce<Message | null>((latest, message) => {
+        if (!latest || message.createdAt > latest.createdAt) return message;
+        return latest;
+      }, null);
+
+    if (!latestIncoming) return;
+    await this.markDeliveredAt(userId, chatId, latestIncoming.createdAt);
+  }
+
+  private async markDeliveredAt(
+    userId: string,
+    chatId: string,
+    deliveredAt: Date,
+  ): Promise<void> {
+    const member = await this.chatMemberRepository.findOne({
+      where: { chatId, userId },
+    });
+    if (!member) return;
+    if (member.lastDeliveredAt && member.lastDeliveredAt >= deliveredAt) return;
+
+    member.lastDeliveredAt = deliveredAt;
+    await this.chatMemberRepository.save(member);
+
+    const recipients = await this.getOtherMemberIds(chatId, userId);
+    this.gateway.emitChatDelivered(
+      {
+        chatId,
+        userId,
+        lastDeliveredAt: deliveredAt.toISOString(),
+      },
+      recipients,
+    );
+  }
+
+  private async getOtherReceiptTimes(
     viewerId: string,
     chatId: string,
-  ): Promise<Date | null> {
+  ): Promise<{ deliveredAt: Date | null; readAt: Date | null }> {
     const others = await this.chatMemberRepository.find({
       where: { chatId },
     });
-    let latest: Date | null = null;
+    let deliveredAt: Date | null = null;
+    let readAt: Date | null = null;
     for (const m of others) {
       if (m.userId === viewerId) continue;
-      if (m.lastReadAt && (!latest || m.lastReadAt > latest)) {
-        latest = m.lastReadAt;
+      if (
+        m.lastDeliveredAt &&
+        (!deliveredAt || m.lastDeliveredAt > deliveredAt)
+      ) {
+        deliveredAt = m.lastDeliveredAt;
+      }
+      if (m.lastReadAt && (!readAt || m.lastReadAt > readAt)) {
+        readAt = m.lastReadAt;
       }
     }
-    return latest;
+    return { deliveredAt, readAt };
   }
 
   private async getOtherMemberIds(
@@ -214,18 +283,35 @@ export class ChatsService {
 
     const dto = this.toMessageDTO(saved, senderId, null);
     const recipients = await this.getOtherMemberIds(chatId, senderId);
-    this.gateway.emitNewMessage(dto, recipients);
+    this.gateway.emitNewMessageToUser(dto, senderId);
+    await Promise.all(
+      this.gateway
+        .getOnlineUserIds(recipients)
+        .map((userId) => this.markDeliveredAt(userId, chatId, saved.createdAt)),
+    );
+    for (const userId of recipients) {
+      this.gateway.emitNewMessageToUser(
+        this.toMessageDTO(saved, userId, null),
+        userId,
+      );
+    }
     return dto;
   }
 
   private toMessageDTO(
     message: Message,
     viewerId: string,
-    otherLastReadAt: Date | null,
+    otherReceiptTimes: { deliveredAt: Date | null; readAt: Date | null } | null,
   ): MessageDTO {
     const fromMe = message.senderId === viewerId;
+    const delivered =
+      fromMe &&
+      !!otherReceiptTimes?.deliveredAt &&
+      otherReceiptTimes.deliveredAt >= message.createdAt;
     const read =
-      fromMe && !!otherLastReadAt && otherLastReadAt >= message.createdAt;
+      fromMe &&
+      !!otherReceiptTimes?.readAt &&
+      otherReceiptTimes.readAt >= message.createdAt;
     return {
       id: message.id,
       chatId: message.chatId,
@@ -233,6 +319,7 @@ export class ChatsService {
       text: message.text,
       createdAt: message.createdAt.toISOString(),
       fromMe,
+      delivered,
       read,
     };
   }
@@ -325,6 +412,8 @@ export class ChatsService {
         'c.last_message_text AS "c_lastMessageText"',
         'c.last_message_at AS "c_lastMessageAt"',
         'c.last_message_sender_id AS "c_lastMessageSenderId"',
+        'other.last_delivered_at AS "c_lastMessageDeliveredAt"',
+        'other.last_read_at AS "c_lastMessageReadAt"',
         `(
           SELECT COUNT(*)::int FROM messages m
           WHERE m.chat_id = c.id
@@ -415,6 +504,16 @@ export class ChatsService {
             text: row.c_lastMessageText,
             at: (row.c_lastMessageAt ?? new Date()).toISOString(),
             fromMe: row.c_lastMessageSenderId === userId,
+            delivered:
+              row.c_lastMessageSenderId === userId &&
+              !!row.c_lastMessageDeliveredAt &&
+              !!row.c_lastMessageAt &&
+              row.c_lastMessageDeliveredAt >= row.c_lastMessageAt,
+            read:
+              row.c_lastMessageSenderId === userId &&
+              !!row.c_lastMessageReadAt &&
+              !!row.c_lastMessageAt &&
+              row.c_lastMessageReadAt >= row.c_lastMessageAt,
           }
         : null,
     };

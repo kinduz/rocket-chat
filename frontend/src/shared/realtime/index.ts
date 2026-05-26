@@ -1,5 +1,6 @@
 export { ChatSocketProvider, useChatSocket } from './chat-socket-provider';
 export type {
+  ChatDeliveredEvent,
   ChatReadEvent,
   ChatSocket,
   ChatTypingEvent,

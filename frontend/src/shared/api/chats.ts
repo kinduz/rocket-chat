@@ -7,6 +7,7 @@ export type ChatMessage = {
   text: string;
   createdAt: string;
   fromMe: boolean;
+  delivered: boolean;
   read: boolean;
 };
 
@@ -33,6 +34,8 @@ export type LastMessagePreview = {
   text: string;
   at: string;
   fromMe: boolean;
+  delivered: boolean;
+  read: boolean;
 };
 
 type ChatListItemBase = {

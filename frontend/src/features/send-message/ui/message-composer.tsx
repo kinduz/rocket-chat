@@ -17,9 +17,14 @@ const COMPOSER_MAX_HEIGHT_PX = 320;
 type MessageComposerProps = {
   disabled?: boolean;
   onSend: (text: string) => void | Promise<void>;
+  onTyping?: () => void;
 };
 
-export const MessageComposer = ({ disabled, onSend }: MessageComposerProps) => {
+export const MessageComposer = ({
+  disabled,
+  onSend,
+  onTyping,
+}: MessageComposerProps) => {
   const { t } = useTranslation();
   const [text, setText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -87,7 +92,10 @@ export const MessageComposer = ({ disabled, onSend }: MessageComposerProps) => {
         <textarea
           ref={textareaRef}
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            setText(e.target.value);
+            if (e.target.value.trim()) onTyping?.();
+          }}
           onKeyDown={handleKeyDown}
           placeholder={t('chat.composer.placeholder')}
           aria-label={t('chat.composer.placeholder')}

@@ -2,7 +2,6 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "./theme.css";
-@config "../tailwind.config.ts";
 
 /* ─── Base styles ─────────────────────────────────────────────────────────── */
 @layer base {

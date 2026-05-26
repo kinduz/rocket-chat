@@ -9,9 +9,15 @@ import { MessageBubble } from './message-bubble';
 
 type MessageListProps = {
   messages: ChatMessage[];
+  onMessageVisible?: (message: ChatMessage) => void;
+  typing?: boolean;
 };
 
-export const MessageList = ({ messages }: MessageListProps) => {
+export const MessageList = ({
+  messages,
+  onMessageVisible,
+  typing,
+}: MessageListProps) => {
   const { t } = useTranslation();
   const groups = groupMessagesByDay(messages);
 
@@ -21,10 +27,25 @@ export const MessageList = ({ messages }: MessageListProps) => {
         <section key={group.dayKey} className="flex flex-col gap-1.5">
           <DayDivider label={formatDayLabel(group.date, t)} />
           {group.messages.map((m) => (
-            <MessageBubble key={m.id} message={m} />
+            <MessageBubble
+              key={m.id}
+              message={m}
+              onVisible={onMessageVisible}
+            />
           ))}
         </section>
       ))}
+      {typing && <TypingBubble />}
     </div>
   );
 };
+
+const TypingBubble = () => (
+  <div className="flex w-full justify-start px-4">
+    <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-md bg-[#2c2c30] px-3 py-2">
+      <span className="size-1.5 animate-pulse rounded-full bg-[#adaeb1]" />
+      <span className="size-1.5 animate-pulse rounded-full bg-[#adaeb1] [animation-delay:150ms]" />
+      <span className="size-1.5 animate-pulse rounded-full bg-[#adaeb1] [animation-delay:300ms]" />
+    </div>
+  </div>
+);

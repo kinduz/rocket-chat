@@ -19,6 +19,9 @@ export class ChatMember {
   userId: string;
 
   @Column({ type: 'timestamptz', nullable: true })
+  lastDeliveredAt: Date | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
   lastReadAt: Date | null;
 
   @CreateDateColumn()

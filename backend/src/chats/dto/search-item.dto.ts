@@ -9,6 +9,18 @@ export class LastMessagePreviewDTO {
 
   @ApiProperty({ description: 'Did the current user send the last message' })
   fromMe: boolean;
+
+  @ApiProperty({
+    description:
+      'For fromMe=true: whether the other participant has received the last message.',
+  })
+  delivered: boolean;
+
+  @ApiProperty({
+    description:
+      'For fromMe=true: whether the other participant has read the last message.',
+  })
+  read: boolean;
 }
 
 export class SearchItemDTO {

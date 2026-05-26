@@ -1,10 +1,8 @@
 import type { Config } from 'tailwindcss';
 
 const config: Config = {
-  content: [
-    './app/**/*.{ts,tsx}',
-    './src/**/*.{ts,tsx}',
-  ],
+  content: ['./app/**/*.{ts,tsx}', './src/**/*.{ts,tsx}'],
+  plugins: [require('tailwind-scrollbar')],
 };
 
 export default config;

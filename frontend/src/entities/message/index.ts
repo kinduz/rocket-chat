@@ -7,3 +7,4 @@ export {
 } from './lib/group-messages-by-day';
 export { MessageBubble } from './message-bubble';
 export { MessageList } from './message-list';
+export { MessageStatusIcon } from './message-status-icon';

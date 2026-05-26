@@ -9,10 +9,16 @@ export type ChatReadEvent = {
   userId: string;
   lastReadAt: string;
 };
+export type ChatDeliveredEvent = {
+  chatId: string;
+  userId: string;
+  lastDeliveredAt: string;
+};
 export type ChatTypingEvent = { chatId: string; userId: string };
 
 export interface ServerToClientEvents {
   'message:new': (e: NewMessageEvent) => void;
+  'chat:delivered': (e: ChatDeliveredEvent) => void;
   'chat:read': (e: ChatReadEvent) => void;
   'chat:typing': (e: ChatTypingEvent) => void;
 }

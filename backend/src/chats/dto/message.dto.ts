@@ -21,6 +21,12 @@ export class MessageDTO {
 
   @ApiProperty({
     description:
+      'For fromMe=true: whether the other participant has received this message. Always false for incoming messages.',
+  })
+  delivered: boolean;
+
+  @ApiProperty({
+    description:
       'For fromMe=true: whether the other participant has read this message. Always false for incoming messages.',
   })
   read: boolean;

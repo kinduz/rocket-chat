@@ -1,19 +1,23 @@
 'use client';
 
 import { Avatar } from '@app/shared/ui';
-import { Book, Search } from 'lucide-react';
+import { Search, SquareSplitHorizontal } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 type ChatHeaderProps = {
   title: string;
   avatarUrl: string | null;
   avatarName?: string | null;
+  unreadCount?: number;
+  typing?: boolean;
 };
 
 export const ChatHeader = ({
   title,
   avatarUrl,
   avatarName,
+  unreadCount = 0,
+  typing,
 }: ChatHeaderProps) => {
   const { t } = useTranslation();
 
@@ -28,8 +32,15 @@ export const ChatHeader = ({
       />
       <div className="min-w-0 flex-1">
         <div className="truncate font-semibold text-foreground">{title}</div>
+        {(typing || unreadCount > 0) && (
+          <div className="truncate text-xs text-muted-foreground">
+            {typing
+              ? 'typing...'
+              : `${unreadCount} unread ${unreadCount === 1 ? 'message' : 'messages'}`}
+          </div>
+        )}
       </div>
-      <div>
+      <div className="flex items-center gap-1">
         <button
           type="button"
           aria-label={t('chat.actions.search')}
@@ -42,7 +53,7 @@ export const ChatHeader = ({
           aria-label={t('chat.actions.collapse')}
           className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors cursor-pointer"
         >
-          <Book className="size-5" aria-hidden />
+          <SquareSplitHorizontal className="size-5" aria-hidden />
         </button>
       </div>
     </header>
