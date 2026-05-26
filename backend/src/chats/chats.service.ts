@@ -14,6 +14,8 @@ type ChatRow = {
   c_lastMessageAt: Date | null;
   c_lastMessageSenderId: string | null;
   u_username: string | null;
+  u_firstName: string | null;
+  u_lastName: string | null;
   u_avatarKey: string | null;
 };
 
@@ -21,6 +23,9 @@ type UserRow = {
   u_id: string;
   u_username: string | null;
   u_email: string | null;
+  u_phone: string | null;
+  u_firstName: string | null;
+  u_lastName: string | null;
   u_avatarKey: string | null;
 };
 
@@ -118,6 +123,8 @@ export class ChatsService {
         'c.last_message_at AS "c_lastMessageAt"',
         'c.last_message_sender_id AS "c_lastMessageSenderId"',
         'u.username AS u_username',
+        'u.first_name AS "u_firstName"',
+        'u.last_name AS "u_lastName"',
         'u.avatar_key AS "u_avatarKey"',
       ])
       .orderBy('c.last_message_at', 'DESC', 'NULLS LAST')
@@ -125,7 +132,12 @@ export class ChatsService {
 
     if (like) {
       chatQB.where(
-        `(c.type = 'direct' AND (u.username ILIKE :like OR u.email ILIKE :like))
+        `(c.type = 'direct' AND (
+            u.username ILIKE :like OR
+            u.email ILIKE :like OR
+            u.first_name ILIKE :like OR
+            u.last_name ILIKE :like
+          ))
          OR (c.type = 'group' AND c.name ILIKE :like)`,
         { like },
       );
@@ -141,7 +153,10 @@ export class ChatsService {
     const userRows = await this.chatRepository.manager
       .createQueryBuilder(User, 'u')
       .where('u.id != :userId', { userId })
-      .andWhere('(u.username ILIKE :like OR u.email ILIKE :like)', { like })
+      .andWhere(
+        '(u.username ILIKE :like OR u.email ILIKE :like OR u.first_name ILIKE :like OR u.last_name ILIKE :like)',
+        { like },
+      )
       .andWhere(
         `u.id NOT IN (
           SELECT other.user_id
@@ -156,6 +171,9 @@ export class ChatsService {
         'u.id AS u_id',
         'u.username AS u_username',
         'u.email AS u_email',
+        'u.phone AS u_phone',
+        'u.first_name AS "u_firstName"',
+        'u.last_name AS "u_lastName"',
         'u.avatar_key AS "u_avatarKey"',
       ])
       .orderBy('u.username', 'ASC')
@@ -175,10 +193,13 @@ export class ChatsService {
       kind: 'chat',
       id: row.c_id,
       name: (isDirect ? row.u_username : row.c_name) ?? '',
+      firstName: isDirect ? (row.u_firstName ?? null) : null,
+      lastName: isDirect ? (row.u_lastName ?? null) : null,
       avatarUrl:
         isDirect && row.u_avatarKey
           ? await this.s3.getPresignedDownloadUrl(row.u_avatarKey)
           : null,
+      phone: null,
       lastMessage: row.c_lastMessageText
         ? {
             text: row.c_lastMessageText,
@@ -194,9 +215,12 @@ export class ChatsService {
       kind: 'user',
       id: row.u_id,
       name: row.u_username ?? row.u_email ?? '',
+      firstName: row.u_firstName ?? null,
+      lastName: row.u_lastName ?? null,
       avatarUrl: row.u_avatarKey
         ? await this.s3.getPresignedDownloadUrl(row.u_avatarKey)
         : null,
+      phone: row.u_phone,
       lastMessage: null,
     };
   }

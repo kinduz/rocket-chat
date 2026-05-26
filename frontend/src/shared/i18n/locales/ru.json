@@ -14,6 +14,11 @@
     "noMessages": "Нет сообщений",
     "noChatSelected": "Выберите чат, чтобы начать общение",
     "chatFallbackName": "Чат #{{index}}",
+    "searchPlaceholder": "Поиск",
+    "clearSearch": "Очистить поиск",
+    "nothingFound": "Ничего не найдено",
+    "settings": "Настройки",
+    "logout": "Выйти",
     "chatName": {
       "support": "Служба поддержки"
     }
@@ -42,7 +47,11 @@
     },
     "profile": {
       "title": "Почти готово!",
-      "subtitle": "Заполните данные или пропустите",
+      "subtitle": "Заполните данные",
+      "firstNameLabel": "Имя",
+      "firstNamePlaceholder": "Введите имя",
+      "lastNameLabel": "Фамилия",
+      "lastNamePlaceholder": "Введите фамилию",
       "emailLabel": "Email",
       "emailPlaceholder": "Введите email",
       "usernameLabel": "Имя пользователя",
@@ -63,7 +72,10 @@
       "emailInvalid": "Некорректный email",
       "usernameMin": "Имя пользователя должно содержать минимум {{min}} символа",
       "usernameMax": "Имя пользователя должно содержать максимум {{max}} символа",
-      "usernameFormat": "Допустимы только буквы, цифры и подчёркивание"
+      "usernameFormat": "Допустимы только буквы, цифры и подчёркивание",
+      "firstNameRequired": "Введите имя",
+      "firstNameMax": "Имя не должно превышать {{max}} символов",
+      "lastNameMax": "Фамилия не должна превышать {{max}} символов"
     }
   }
 }

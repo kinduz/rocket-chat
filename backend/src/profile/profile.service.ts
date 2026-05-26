@@ -74,6 +74,8 @@ export class ProfileService {
         : null,
       email: user.email,
       username: user.username,
+      firstName: user.firstName ?? null,
+      lastName: user.lastName ?? null,
       phone: user.phone,
     };
   }

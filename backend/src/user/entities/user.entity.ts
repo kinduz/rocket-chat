@@ -28,6 +28,12 @@ export class User {
   email: string;
 
   @Column({ nullable: true })
+  firstName: string;
+
+  @Column({ nullable: true })
+  lastName: string;
+
+  @Column({ nullable: true })
   avatarUrl: string;
 
   @Column({ nullable: true })

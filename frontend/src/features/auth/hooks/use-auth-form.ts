@@ -27,6 +27,16 @@ const otpSchema = yup.object({
 });
 
 const profileSchema = yup.object({
+  firstName: yup
+    .string()
+    .trim()
+    .required(() => i18n.t('auth.validation.firstNameRequired'))
+    .max(64, () => i18n.t('auth.validation.firstNameMax', { max: 64 })),
+  lastName: yup
+    .string()
+    .transform((v) => (v === '' ? undefined : v))
+    .max(64, () => i18n.t('auth.validation.lastNameMax', { max: 64 }))
+    .optional(),
   email: yup
     .string()
     .transform((v) => (v === '' ? undefined : v))
@@ -66,7 +76,13 @@ export const useAuthForm = (onFinish?: () => void) => {
 
   const profileForm = useForm<ProfileFormValues>({
     resolver: yupResolver(profileSchema) as never,
-    defaultValues: { email: '', username: '', avatar: null },
+    defaultValues: {
+      email: '',
+      username: '',
+      firstName: '',
+      lastName: '',
+      avatar: null,
+    },
   });
 
   const handlePhoneValidate = useCallback(
@@ -170,14 +186,12 @@ export const useAuthForm = (onFinish?: () => void) => {
   const [updateProfileState, saveProfile] = useAsyncFn(
     async (data: ProfileFormValues) => {
       const payload = {
+        firstName: data.firstName.trim(),
+        ...(data.lastName?.trim() ? { lastName: data.lastName.trim() } : {}),
         ...(data.email ? { email: data.email } : {}),
         ...(data.username ? { username: data.username } : {}),
         ...(data.avatar ? { avatar: data.avatar } : {}),
       };
-      if (Object.keys(payload).length === 0) {
-        onFinish?.();
-        return;
-      }
       const res = await rcClient.auth.updateProfile(payload);
       profileForm.clearErrors();
       if (res.error) {
@@ -201,10 +215,6 @@ export const useAuthForm = (onFinish?: () => void) => {
     [onFinish, profileForm, toast],
   );
 
-  const skipProfile = useCallback(() => {
-    onFinish?.();
-  }, [onFinish]);
-
   const goBack = useCallback(() => {
     setStep('phone');
     otpForm.reset();
@@ -226,7 +236,6 @@ export const useAuthForm = (onFinish?: () => void) => {
     verifyOtp,
     updateProfileState,
     saveProfile,
-    skipProfile,
     goBack,
     handlePhoneValidate,
     otpCode,

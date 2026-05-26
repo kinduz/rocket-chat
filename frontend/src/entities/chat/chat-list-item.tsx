@@ -23,7 +23,6 @@ export const ChatListItem = ({
 }: ChatListItemProps) => {
   const { t } = useTranslation();
   const displayName = getChatDisplayName(chat, index, t);
-  const lastMessage = chat.lastMessage;
 
   return (
     <button
@@ -46,34 +45,77 @@ export const ChatListItem = ({
       />
 
       <div className="sidebar-compact:hidden min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="min-w-0 flex-1 truncate text-sm text-[#fbfcfb] font-medium">
-            {displayName}
-          </span>
-          {lastMessage && (
-            <span
-              suppressHydrationWarning
-              className={cn('shrink-0 text-xs text-[#adaeb1]')}
-            >
-              {formatChatTime(lastMessage.at)}
-            </span>
-          )}
-        </div>
-
-        <div
-          className={cn(
-            'mt-0.5 flex items-center gap-1 text-sm font-medium text-muted-foreground',
-            // selected ? 'text-[#6d6d72]' : 'text-muted-foreground',
-          )}
-        >
-          {lastMessage?.fromMe && (
-            <Check className="size-3.5 shrink-0" aria-hidden />
-          )}
-          <span className="truncate">
-            {lastMessage?.text ?? t('home.noMessages')}
-          </span>
-        </div>
+        {chat.kind === 'chat' ? (
+          <ChatRowContent
+            displayName={displayName}
+            lastMessage={chat.lastMessage}
+            emptyText={t('home.noMessages')}
+          />
+        ) : (
+          <UserRowContent displayName={displayName} username={chat.name} />
+        )}
       </div>
     </button>
+  );
+};
+
+type ChatRowContentProps = {
+  displayName: string;
+  lastMessage: { text: string; at: string; fromMe: boolean } | null;
+  emptyText: string;
+};
+
+const ChatRowContent = ({
+  displayName,
+  lastMessage,
+  emptyText,
+}: ChatRowContentProps) => (
+  <>
+    <div className="flex items-center gap-2">
+      <span className="min-w-0 flex-1 truncate text-sm text-[#fbfcfb] font-medium">
+        {displayName}
+      </span>
+      {lastMessage && (
+        <span
+          suppressHydrationWarning
+          className="shrink-0 text-xs text-[#adaeb1]"
+        >
+          {formatChatTime(lastMessage.at)}
+        </span>
+      )}
+    </div>
+
+    <div className="mt-0.5 flex items-center gap-1 text-sm font-medium text-muted-foreground">
+      {lastMessage?.fromMe && (
+        <Check className="size-3.5 shrink-0" aria-hidden />
+      )}
+      <span className="truncate">{lastMessage?.text ?? emptyText}</span>
+    </div>
+  </>
+);
+
+type UserRowContentProps = {
+  displayName: string;
+  username: string | null;
+};
+
+const UserRowContent = ({ displayName, username }: UserRowContentProps) => {
+  const trimmedUsername = username?.trim();
+  const showUsername =
+    !!trimmedUsername && trimmedUsername !== displayName.trim();
+
+  return (
+    <>
+      <div className="flex items-center gap-2">
+        <span className="min-w-0 flex-1 truncate text-sm text-[#fbfcfb] font-medium">
+          {displayName}
+        </span>
+      </div>
+      {showUsername && (
+        <div className="mt-0.5 text-sm font-medium text-muted-foreground truncate">
+          @{trimmedUsername}
+        </div>
+      )}
+    </>
   );
 };

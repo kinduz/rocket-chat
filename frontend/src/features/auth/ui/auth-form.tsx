@@ -34,7 +34,6 @@ export const AuthForm = () => {
     verifyOtpState,
     updateProfileState,
     saveProfile,
-    skipProfile,
     goBack,
     handlePhoneValidate,
     isPhoneValid,
@@ -129,7 +128,6 @@ export const AuthForm = () => {
           <AuthThirdStep
             form={profileForm}
             onSubmit={saveProfile}
-            onSkip={skipProfile}
             isLoading={updateProfileState.loading}
           />
         </motion.div>

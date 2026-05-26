@@ -6,13 +6,27 @@ export type LastMessagePreview = {
   fromMe: boolean;
 };
 
-export type ChatListItem = {
-  kind: 'chat' | 'user';
+type ChatListItemBase = {
   id: string;
   name: string;
+  firstName: string | null;
+  lastName: string | null;
   avatarUrl: string | null;
+};
+
+export type ChatItem = ChatListItemBase & {
+  kind: 'chat';
+  phone: null;
   lastMessage: LastMessagePreview | null;
 };
+
+export type UserItem = ChatListItemBase & {
+  kind: 'user';
+  phone: string | null;
+  lastMessage: null;
+};
+
+export type ChatListItem = ChatItem | UserItem;
 
 export type GetChatsResponse = R<ChatListItem[]>;
 

@@ -28,8 +28,31 @@ export class SearchItemDTO {
   @ApiProperty()
   name: string;
 
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description:
+      'Set for kind=user, and for kind=chat when direct (other user). null for group chats',
+  })
+  firstName: string | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description:
+      'Set for kind=user, and for kind=chat when direct (other user). null for group chats',
+  })
+  lastName: string | null;
+
   @ApiProperty({ type: String, nullable: true })
   avatarUrl: string | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: 'Only set for kind=user',
+  })
+  phone: string | null;
 
   @ApiProperty({
     type: LastMessagePreviewDTO,

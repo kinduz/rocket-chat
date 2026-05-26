@@ -2,9 +2,17 @@
 
 import { ChatWindow } from '@app/widgets/chat-window';
 import { ChatsSidebar } from '@app/widgets/chats-sidebar';
+import { useEffect, useState } from 'react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 
 export function HomePage() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) {
+    return <div className="h-full w-full" />;
+  }
+
   return (
     <PanelGroup
       direction="horizontal"

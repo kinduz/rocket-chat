@@ -23,6 +23,8 @@ export class AuthResource extends Resource {
     const formData = new FormData();
     if (req.email) formData.append('email', req.email);
     if (req.username) formData.append('username', req.username);
+    if (req.firstName) formData.append('firstName', req.firstName);
+    if (req.lastName) formData.append('lastName', req.lastName);
     if (req.avatar) formData.append('avatar', req.avatar);
 
     const { data } = await this.client.put<UpdateProfileResponse>(
@@ -58,6 +60,8 @@ export type VerifyOtpResponse = R<{
 export type UpdateProfileRequest = {
   email?: string;
   username?: string;
+  firstName?: string;
+  lastName?: string;
   avatar?: File;
 };
 

@@ -10,4 +10,15 @@ export class UpdateProfileDto {
   @MinLength(3)
   @MaxLength(32)
   username?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(64)
+  firstName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  lastName?: string;
 }

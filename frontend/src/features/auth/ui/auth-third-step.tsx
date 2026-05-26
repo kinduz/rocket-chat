@@ -8,20 +8,20 @@ import { useTranslation } from 'react-i18next';
 export type ProfileFormValues = {
   email: string;
   username: string;
+  firstName: string;
+  lastName: string;
   avatar: File | null;
 };
 
 type AuthThirdStepProps = {
   form: UseFormReturn<ProfileFormValues>;
   onSubmit: (data: ProfileFormValues) => void;
-  onSkip: () => void;
   isLoading: boolean;
 };
 
 export const AuthThirdStep = ({
   form,
   onSubmit,
-  onSkip,
   isLoading,
 }: AuthThirdStepProps) => {
   const { t } = useTranslation();
@@ -32,13 +32,11 @@ export const AuthThirdStep = ({
     formState: { errors },
   } = form;
 
-  const [emailValue, usernameValue, avatarValue] = useWatch({
+  const [firstNameValue] = useWatch({
     control,
-    name: ['email', 'username', 'avatar'],
+    name: ['firstName'],
   });
-  const isSaveDisabled =
-    isLoading ||
-    (!emailValue?.trim() && !usernameValue?.trim() && !avatarValue);
+  const isSaveDisabled = isLoading || !firstNameValue?.trim();
 
   const inputClass = (hasError: boolean) =>
     `w-full h-[52px] rounded-xl border bg-transparent px-4 text-base outline-none transition-colors ${
@@ -57,7 +55,7 @@ export const AuthThirdStep = ({
           {t('auth.profile.subtitle')}
         </span>
 
-        <div className="mt-[24px] max-md:mt-6 w-full flex flex-col  items-center gap-4 w-80">
+        <div className="mt-6 max-md:mt-6 flex flex-col items-center gap-4 w-80">
           <Controller
             control={control}
             name="avatar"
@@ -71,10 +69,48 @@ export const AuthThirdStep = ({
           />
 
           <div className="flex flex-col gap-1.5 w-full">
-            <label className="text-sm text-[#AAAAAA]">
+            <label htmlFor="firstName" className="text-sm text-[#AAAAAA]">
+              {t('auth.profile.firstNameLabel')}
+              <span className="text-red-500 ml-1">*</span>
+            </label>
+            <input
+              id="firstName"
+              {...register('firstName')}
+              type="text"
+              placeholder={t('auth.profile.firstNamePlaceholder')}
+              className={inputClass(!!errors.firstName)}
+            />
+            {errors.firstName?.message && (
+              <span className="text-sm text-red-500">
+                {errors.firstName.message}
+              </span>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-1.5 w-full">
+            <label htmlFor="lastName" className="text-sm text-[#AAAAAA]">
+              {t('auth.profile.lastNameLabel')}
+            </label>
+            <input
+              id="lastName"
+              {...register('lastName')}
+              type="text"
+              placeholder={t('auth.profile.lastNamePlaceholder')}
+              className={inputClass(!!errors.lastName)}
+            />
+            {errors.lastName?.message && (
+              <span className="text-sm text-red-500">
+                {errors.lastName.message}
+              </span>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-1.5 w-full">
+            <label htmlFor="email" className="text-sm text-[#AAAAAA]">
               {t('auth.profile.emailLabel')}
             </label>
             <input
+              id="email"
               {...register('email')}
               type="email"
               placeholder={t('auth.profile.emailPlaceholder')}
@@ -88,10 +124,11 @@ export const AuthThirdStep = ({
           </div>
 
           <div className="flex flex-col gap-1.5 w-full">
-            <label className="text-sm text-[#AAAAAA]">
+            <label htmlFor="username" className="text-sm text-[#AAAAAA]">
               {t('auth.profile.usernameLabel')}
             </label>
             <input
+              id="username"
               {...register('username')}
               type="text"
               placeholder={t('auth.profile.usernamePlaceholder')}
@@ -109,15 +146,6 @@ export const AuthThirdStep = ({
           className="text-lg w-[324px] h-[52px] mt-[49px] max-md:mt-8"
         >
           {t('auth.profile.saveButton')}
-        </Button>
-
-        <Button
-          type="button"
-          variant="link"
-          onClick={onSkip}
-          className="mt-4 h-[52px] text-lg"
-        >
-          {t('auth.profile.skipButton')}
         </Button>
       </div>
     </form>

@@ -12,6 +12,12 @@ export class ProfileDTO {
   @ApiProperty({ type: 'string', nullable: true })
   username: string | null;
 
+  @ApiProperty({ type: 'string', nullable: true })
+  firstName: string | null;
+
+  @ApiProperty({ type: 'string', nullable: true })
+  lastName: string | null;
+
   @ApiProperty({ type: 'string' })
   phone: string;
 }
