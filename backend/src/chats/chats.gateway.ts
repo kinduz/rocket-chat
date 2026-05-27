@@ -154,11 +154,19 @@ export class ChatsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
   }
 
-  emitMessageDeletedToUser(
-    event: { chatId: string; messageId: string },
+  emitMessagesDeletedToUser(
+    event: {
+      chatId: string;
+      messageIds: string[];
+      unreadDecrement: number;
+    },
     userId: string,
   ): void {
-    this.server.to(userRoom(userId)).emit('message:deleted', event);
+    this.server.to(userRoom(userId)).emit('messages:deleted', event);
+  }
+
+  emitChatDeletedToUser(event: { chatId: string }, userId: string): void {
+    this.server.to(userRoom(userId)).emit('chat:deleted', event);
   }
 
   emitChatRead(event: ChatReadEvent, recipientUserIds: string[]): void {

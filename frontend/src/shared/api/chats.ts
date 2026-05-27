@@ -128,14 +128,15 @@ export class ChatsResource extends Resource {
     return data;
   }
 
-  async deleteMessage(
-    chatId: string,
-    messageId: string,
-  ): Promise<R<null> | undefined> {
-    const { data, status } = await this.client.delete<R<null> | undefined>(
-      `/chats/${chatId}/messages/${messageId}`,
+  async deleteMessages(params: {
+    chatId: string;
+    messageIds?: string[];
+    forEveryone: boolean;
+  }): Promise<R<{ deletedIds: string[] }>> {
+    const { data } = await this.client.delete<R<{ deletedIds: string[] }>>(
+      `/chats/messages`,
+      { data: params },
     );
-    if (status === 204) return undefined;
     return data;
   }
 }

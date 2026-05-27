@@ -5,11 +5,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ChatsController } from './chats.controller';
 import { ChatsGateway } from './chats.gateway';
 import { ChatsService } from './chats.service';
-import { Chat, ChatMember, Message } from './entities';
+import { Chat, ChatMember, Message, MessageHide } from './entities';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Chat, ChatMember, Message]),
+    TypeOrmModule.forFeature([Chat, ChatMember, Message, MessageHide]),
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({

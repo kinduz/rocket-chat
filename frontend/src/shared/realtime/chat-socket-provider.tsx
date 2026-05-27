@@ -5,7 +5,7 @@ import {
   type ChatListItem,
   type ChatMessage,
 } from '@app/shared/api';
-import { chatsKeys, messagesKeys, useToast } from '@app/shared/hooks';
+import { chatsKeys, messagesKeys } from '@app/shared/hooks';
 import { useQueryClient } from '@tanstack/react-query';
 import Cookies from 'js-cookie';
 import {
@@ -18,12 +18,13 @@ import {
   useState,
 } from 'react';
 import {
+  type ChatDeletedEvent,
   type ChatDeliveredEvent,
   type ChatReadEvent,
   type ChatSocket,
   type ChatTypingEvent,
   createChatSocket,
-  type MessageDeletedEvent,
+  type MessagesDeletedEvent,
   type MessageUpdatedEvent,
   type NewMessageEvent,
 } from './socket';
@@ -81,8 +82,6 @@ export function ChatSocketProvider({ children }: ChatSocketProviderProps) {
   const clearTyping = useTypingStore((s) => s.clearTyping);
   const [socket, setSocket] = useState<ChatSocket | null>(null);
   const lastTypingEmittedAt = useRef<Record<string, number>>({});
-
-  const { toast } = useToast();
 
   useEffect(() => {
     const token = Cookies.get(ACCESS_TOKEN_KEY);
@@ -247,19 +246,19 @@ export function ChatSocketProvider({ children }: ChatSocketProviderProps) {
       );
     });
 
-    s.on('message:deleted', (e: MessageDeletedEvent) => {
-      let removedWasLast = false;
+    s.on('messages:deleted', (e: MessagesDeletedEvent) => {
+      const removedIds = new Set(e.messageIds);
+      let lastRemoved = false;
       queryClient.setQueryData<ChatMessage[] | undefined>(
         messagesKeys.list(e.chatId),
         (prev) => {
           if (!prev) return prev;
-          const idx = prev.findIndex((m) => m.id === e.messageId);
-          if (idx < 0) return prev;
-          if (idx === prev.length - 1) removedWasLast = true;
-          return [...prev.slice(0, idx), ...prev.slice(idx + 1)];
+          if (!prev.some((m) => removedIds.has(m.id))) return prev;
+          if (removedIds.has(prev[prev.length - 1]?.id)) lastRemoved = true;
+          return prev.filter((m) => !removedIds.has(m.id));
         },
       );
-      if (removedWasLast) {
+      if (lastRemoved || e.unreadDecrement > 0) {
         queryClient.setQueriesData<ChatListItem[] | undefined>(
           { queryKey: chatsKeys.all },
           (prev) => {
@@ -270,9 +269,9 @@ export function ChatSocketProvider({ children }: ChatSocketProviderProps) {
             const lastMsg = messages?.[messages.length - 1] ?? null;
             return prev.map((c) => {
               if (c.kind !== 'chat' || c.id !== e.chatId) return c;
-              return {
-                ...c,
-                lastMessage: lastMsg
+              const next: ChatListItem = { ...c };
+              if (lastRemoved) {
+                next.lastMessage = lastMsg
                   ? {
                       text: lastMsg.text,
                       at: lastMsg.createdAt,
@@ -280,8 +279,15 @@ export function ChatSocketProvider({ children }: ChatSocketProviderProps) {
                       delivered: lastMsg.delivered,
                       read: lastMsg.read,
                     }
-                  : null,
-              };
+                  : null;
+              }
+              if (e.unreadDecrement > 0) {
+                next.unreadCount = Math.max(
+                  0,
+                  next.unreadCount - e.unreadDecrement,
+                );
+              }
+              return next;
             });
           },
         );
@@ -290,6 +296,15 @@ export function ChatSocketProvider({ children }: ChatSocketProviderProps) {
 
     s.on('chat:typing', (e: ChatTypingEvent) => {
       setTyping(e.chatId);
+    });
+
+    s.on('chat:deleted', (e: ChatDeletedEvent) => {
+      queryClient.removeQueries({ queryKey: messagesKeys.list(e.chatId) });
+      queryClient.setQueriesData<ChatListItem[] | undefined>(
+        { queryKey: chatsKeys.all },
+        (prev) =>
+          prev?.filter((c) => !(c.kind === 'chat' && c.id === e.chatId)),
+      );
     });
 
     return () => {

@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ApiErrorCode, ApiException } from 'src/shared';
-import { In, LessThan, Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { S3Service } from '../shared/s3';
 import { User } from '../user/entities/user.entity';
 import { ChatsGateway } from './chats.gateway';
 import { MessageDTO, SearchItemDTO } from './dto';
-import { Chat, ChatMember, Message } from './entities';
+import { Chat, ChatMember, Message, MessageHide } from './entities';
 
 type ChatRow = {
   c_id: string;
@@ -43,6 +43,8 @@ export class ChatsService {
     private readonly chatMemberRepository: Repository<ChatMember>,
     @InjectRepository(Message)
     private readonly messageRepository: Repository<Message>,
+    @InjectRepository(MessageHide)
+    private readonly messageHideRepository: Repository<MessageHide>,
     private readonly s3: S3Service,
     private readonly gateway: ChatsGateway,
   ) {}
@@ -71,17 +73,24 @@ export class ChatsService {
     await this.ensureMembership(userId, chatId);
 
     const limit = Math.min(Math.max(opts?.limit ?? 50, 1), 100);
-    const where: Record<string, unknown> = { chatId };
+    const qb = this.messageRepository
+      .createQueryBuilder('m')
+      .where('m.chat_id = :chatId', { chatId })
+      .andWhere(
+        `NOT EXISTS (
+          SELECT 1 FROM message_hides h
+          WHERE h.message_id = m.id AND h.user_id = :userId
+        )`,
+        { userId },
+      )
+      .orderBy('m.createdAt', 'DESC')
+      .take(limit);
     if (opts?.before) {
-      where.createdAt = LessThan(new Date(opts.before));
+      qb.andWhere('m.createdAt < :before', { before: new Date(opts.before) });
     }
 
     const [rows, otherReceiptTimes] = await Promise.all([
-      this.messageRepository.find({
-        where,
-        order: { createdAt: 'DESC' },
-        take: limit,
-      }),
+      qb.getMany(),
       this.getOtherReceiptTimes(userId, chatId),
     ]);
 
@@ -391,48 +400,125 @@ export class ChatsService {
     return this.toMessageDTO(saved, userId, null);
   }
 
-  async deleteMessage(
+  async deleteMessages(
     userId: string,
     chatId: string,
-    messageId: string,
-  ): Promise<void> {
+    forEveryone: boolean,
+    messageIds?: string[],
+  ): Promise<{ deletedIds: string[] }> {
     await this.ensureMembership(userId, chatId);
 
-    const message = await this.messageRepository.findOne({
-      where: { id: messageId, chatId },
-    });
-    if (!message) {
-      throw new ApiException(ApiErrorCode.BAD_REQUEST, {
-        message: 'Message does not belong to this chat',
-      });
-    }
-    if (message.senderId !== userId) {
-      throw new ApiException(ApiErrorCode.FORBIDDEN);
-    }
+    const chatWide = !messageIds?.length;
+    const messages = chatWide
+      ? await this.messageRepository.find({ where: { chatId } })
+      : await this.messageRepository.find({
+          where: { id: In(messageIds), chatId },
+        });
 
-    await this.messageRepository.delete(messageId);
+    if (messages.length === 0) return { deletedIds: [] };
 
-    const chat = await this.chatRepository.findOne({ where: { id: chatId } });
-    if (chat?.lastMessageId === messageId) {
-      const prev = await this.messageRepository.findOne({
-        where: { chatId },
-        order: { createdAt: 'DESC' },
-      });
-      await this.chatRepository.update(chatId, {
-        lastMessageId: prev?.id ?? null,
-        lastMessageText: prev?.text ?? null,
-        lastMessageSenderId: prev?.senderId ?? null,
-        lastMessageAt: prev?.createdAt ?? null,
+    const own = messages.filter((m) => m.senderId === userId);
+    const others = messages.filter((m) => m.senderId !== userId);
+
+    if (forEveryone && !chatWide && others.length > 0) {
+      throw new ApiException(ApiErrorCode.FORBIDDEN, {
+        message: 'You can hard-delete only your own messages',
       });
     }
 
-    const memberIds = await this.getAllMemberIds(chatId);
-    for (const memberId of memberIds) {
-      this.gateway.emitMessageDeletedToUser(
-        { chatId, messageId },
-        memberId,
+    const members = await this.chatMemberRepository.find({ where: { chatId } });
+
+    // Chat-wide "for everyone" wipes the entire chat for all participants.
+    // Otherwise: own messages hard-delete (forEveryone) or hidden-for-self (else).
+    const hardDeleted = forEveryone
+      ? chatWide
+        ? messages
+        : own
+      : [];
+    const hiddenForSelf = forEveryone
+      ? chatWide
+        ? []
+        : others
+      : messages;
+
+    const hardIds = hardDeleted.map((m) => m.id);
+    const hiddenIds = hiddenForSelf.map((m) => m.id);
+
+    if (hardIds.length) {
+      await this.messageRepository.delete({ id: In(hardIds) });
+      await this.messageHideRepository.delete({ messageId: In(hardIds) });
+    }
+    if (hiddenIds.length) {
+      const rows = hiddenIds.map((id) =>
+        this.messageHideRepository.create({ userId, messageId: id, chatId }),
+      );
+      await this.messageHideRepository
+        .createQueryBuilder()
+        .insert()
+        .values(rows)
+        .orIgnore()
+        .execute();
+    }
+
+    if (chatWide && forEveryone) {
+      await this.messageHideRepository.delete({ chatId });
+      await this.chatMemberRepository.delete({ chatId });
+      await this.chatRepository.delete(chatId);
+    } else {
+      await this.refreshChatLastMessage(chatId);
+    }
+
+    // WS: other members only see hard-deleted ids; self sees everything affected.
+    if (hardIds.length) {
+      for (const m of members) {
+        if (m.userId === userId) continue;
+        const wasUnread = hardDeleted.filter(
+          (msg) =>
+            msg.senderId !== m.userId &&
+            (!m.lastReadAt || msg.createdAt > m.lastReadAt),
+        ).length;
+        this.gateway.emitMessagesDeletedToUser(
+          { chatId, messageIds: hardIds, unreadDecrement: wasUnread },
+          m.userId,
+        );
+      }
+    }
+
+    const selfAffected = [...hardIds, ...hiddenIds];
+    if (selfAffected.length) {
+      const selfMember = members.find((mm) => mm.userId === userId);
+      const wasUnread = messages.filter((msg) => {
+        if (!selfAffected.includes(msg.id)) return false;
+        if (msg.senderId === userId) return false;
+        return !selfMember?.lastReadAt || msg.createdAt > selfMember.lastReadAt;
+      }).length;
+      this.gateway.emitMessagesDeletedToUser(
+        { chatId, messageIds: selfAffected, unreadDecrement: wasUnread },
+        userId,
       );
     }
+
+    // Chat-wide for everyone — notify every member that the chat is gone.
+    if (chatWide && forEveryone) {
+      for (const m of members) {
+        this.gateway.emitChatDeletedToUser({ chatId }, m.userId);
+      }
+    }
+
+    return { deletedIds: selfAffected };
+  }
+
+  private async refreshChatLastMessage(chatId: string): Promise<void> {
+    const prev = await this.messageRepository.findOne({
+      where: { chatId },
+      order: { createdAt: 'DESC' },
+    });
+    await this.chatRepository.update(chatId, {
+      lastMessageId: prev?.id ?? null,
+      lastMessageText: prev?.text ?? null,
+      lastMessageSenderId: prev?.senderId ?? null,
+      lastMessageAt: prev?.createdAt ?? null,
+    });
   }
 
   private async getAllMemberIds(chatId: string): Promise<string[]> {
@@ -538,24 +624,39 @@ export class ChatsService {
           WHERE m.chat_id = c.id
             AND m.sender_id != :userId
             AND m.created_at > COALESCE(me.last_read_at, 'epoch'::timestamptz)
+            AND NOT EXISTS (
+              SELECT 1 FROM message_hides h
+              WHERE h.message_id = m.id AND h.user_id = :userId
+            )
         ) AS "c_unreadCount"`,
         'u.username AS u_username',
         'u.first_name AS "u_firstName"',
         'u.last_name AS "u_lastName"',
         'u.avatar_key AS "u_avatarKey"',
       ])
+      .andWhere(
+        `EXISTS (
+          SELECT 1 FROM messages m
+          WHERE m.chat_id = c.id
+            AND NOT EXISTS (
+              SELECT 1 FROM message_hides h
+              WHERE h.message_id = m.id AND h.user_id = :userId
+            )
+        )`,
+        { userId },
+      )
       .orderBy('c.last_message_at', 'DESC', 'NULLS LAST')
       .limit(50);
 
     if (like) {
-      chatQB.where(
-        `(c.type = 'direct' AND (
+      chatQB.andWhere(
+        `((c.type = 'direct' AND (
             u.username ILIKE :like OR
             u.email ILIKE :like OR
             u.first_name ILIKE :like OR
             u.last_name ILIKE :like
           ))
-         OR (c.type = 'group' AND c.name ILIKE :like)`,
+         OR (c.type = 'group' AND c.name ILIKE :like))`,
         { like },
       );
     }

@@ -3,6 +3,7 @@
 import { getChatDisplayName } from '@app/entities/chat';
 import { MessageList } from '@app/entities/message';
 import { useSelectedChat } from '@app/features/chat-selection';
+import { useMessageDeletion } from '@app/features/delete-messages';
 import { MessageComposer, useSendMessage } from '@app/features/send-message';
 import sendSoundUrl from '@app/features/send-message/assets/send.mp3';
 import {
@@ -20,6 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { ChatHeader } from './chat-header';
 
 export const ChatWindow = () => {
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const { t } = useTranslation();
   const selected = useSelectedChat((s) => s.selected);
   const select = useSelectedChat((s) => s.select);
@@ -27,6 +29,7 @@ export const ChatWindow = () => {
   const queryClient = useQueryClient();
   const { joinChat, leaveChat, emitTyping, resetTypingThrottle } =
     useChatSocket();
+  const { requestDelete } = useMessageDeletion();
 
   const selectedFromList =
     selected?.kind === 'chat'
@@ -129,9 +132,10 @@ export const ChatWindow = () => {
     null,
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reset editing state when switching chats
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset editing / selection when switching chats
   useEffect(() => {
     setEditing(null);
+    setSelectedIds(new Set());
   }, [chatId]);
 
   const handleStartEdit = useCallback((message: ChatMessage) => {
@@ -163,16 +167,72 @@ export const ChatWindow = () => {
     [chatId, editing],
   );
 
-  const handleDelete = useCallback(
-    async (message: ChatMessage) => {
-      if (!chatId) return;
-      await rcClient.chats.deleteMessage(chatId, message.id);
-      if (editing?.id === message.id) {
-        setEditing(null);
+  const selectionActive = selectedIds.size > 0;
+
+  const handleSelect = useCallback((message: ChatMessage) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.add(message.id);
+      return next;
+    });
+  }, []);
+
+  const handleToggleSelection = useCallback((message: ChatMessage) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(message.id)) next.delete(message.id);
+      else next.add(message.id);
+      return next;
+    });
+  }, []);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  // Prune selection if messages disappear (deletion, chat switch handled separately).
+  useEffect(() => {
+    if (!messages) return;
+    setSelectedIds((prev) => {
+      if (prev.size === 0) return prev;
+      const visible = new Set(messages.map((m) => m.id));
+      let changed = false;
+      const next = new Set<string>();
+      for (const id of prev) {
+        if (visible.has(id)) next.add(id);
+        else changed = true;
       }
-    },
-    [chatId, editing],
+      return changed ? next : prev;
+    });
+  }, [messages]);
+
+  const isOwn = useCallback(
+    (ids: string[]) =>
+      ids.every((id) => messages?.find((m) => m.id === id)?.fromMe === true),
+    [messages],
   );
+
+  const handleRequestDelete = useCallback(
+    (message: ChatMessage) => {
+      if (!chatId) return;
+      requestDelete({
+        chatId,
+        messageIds: [message.id],
+        canDeleteForEveryone: message.fromMe,
+      });
+    },
+    [chatId, requestDelete],
+  );
+
+  const handleRequestDeleteSelected = useCallback(() => {
+    if (!chatId || selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    requestDelete({
+      chatId,
+      messageIds: ids,
+      canDeleteForEveryone: isOwn(ids),
+    });
+  }, [chatId, requestDelete, selectedIds, isOwn]);
 
   if (!activeSelected) {
     return (
@@ -238,6 +298,9 @@ export const ChatWindow = () => {
           activeSelected.kind === 'chat' ? activeSelected.unreadCount : 0
         }
         typing={typing}
+        selectedCount={selectedIds.size}
+        onClearSelection={handleClearSelection}
+        onDeleteSelected={handleRequestDeleteSelected}
       />
 
       <div
@@ -254,8 +317,12 @@ export const ChatWindow = () => {
           <MessageList
             messages={messages ?? []}
             typing={typing}
+            selectedIds={selectedIds}
+            selectionActive={selectionActive}
             onEdit={handleStartEdit}
-            onDelete={handleDelete}
+            onSelect={handleSelect}
+            onRequestDelete={handleRequestDelete}
+            onToggleSelection={handleToggleSelection}
           />
         )}
         {showEmptyMessages && (

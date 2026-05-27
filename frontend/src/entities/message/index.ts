@@ -6,5 +6,6 @@ export {
   type MessageDayGroup,
 } from './lib/group-messages-by-day';
 export { MessageBubble } from './message-bubble';
+export { MessageContextMenu } from './message-context-menu';
 export { MessageList } from './message-list';
 export { MessageStatusIcon } from './message-status-icon';

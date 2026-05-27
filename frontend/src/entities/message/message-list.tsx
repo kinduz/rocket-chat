@@ -9,15 +9,23 @@ import { MessageBubble } from './message-bubble';
 
 type MessageListProps = {
   messages: ChatMessage[];
+  selectedIds?: Set<string>;
+  selectionActive?: boolean;
   onEdit?: (message: ChatMessage) => void;
-  onDelete?: (message: ChatMessage) => void;
+  onSelect?: (message: ChatMessage) => void;
+  onRequestDelete?: (message: ChatMessage) => void;
+  onToggleSelection?: (message: ChatMessage) => void;
   typing?: boolean;
 };
 
 export const MessageList = ({
   messages,
+  selectedIds,
+  selectionActive,
   onEdit,
-  onDelete,
+  onSelect,
+  onRequestDelete,
+  onToggleSelection,
   typing,
 }: MessageListProps) => {
   const { t } = useTranslation();
@@ -32,8 +40,12 @@ export const MessageList = ({
             <MessageBubble
               key={m.id}
               message={m}
+              selected={selectedIds?.has(m.id)}
+              selectionActive={selectionActive}
               onEdit={onEdit}
-              onDelete={onDelete}
+              onSelect={onSelect}
+              onRequestDelete={onRequestDelete}
+              onToggleSelection={onToggleSelection}
             />
           ))}
         </section>

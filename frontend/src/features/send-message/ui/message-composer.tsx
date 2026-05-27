@@ -143,7 +143,6 @@ export const MessageComposer = ({
           {isEmojiPickerOpen && (
             <div className="absolute bottom-full left-0 mb-2">
               <EmojiPicker
-                lazyLoadEmojis
                 skinTonesDisabled
                 theme={Theme.DARK}
                 onEmojiClick={(emoji) => {
@@ -166,8 +165,7 @@ export const MessageComposer = ({
             placeholder={t('chat.composer.placeholder')}
             aria-label={t('chat.composer.placeholder')}
             rows={1}
-            disabled={disabled}
-            className="block w-full resize-none bg-transparent text-sm leading-snug text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
+            className="block w-full resize-none bg-transparent text-sm leading-snug text-foreground outline-none placeholder:text-muted-foreground"
           />
         </div>
 

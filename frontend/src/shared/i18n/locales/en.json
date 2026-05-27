@@ -24,6 +24,7 @@
     }
   },
   "chat": {
+    "typing": "typing...",
     "empty": "No messages yet",
     "startNew": "Send the first message to start the conversation",
     "day": {
@@ -40,6 +41,33 @@
       "attachMenu": "More",
       "attachFile": "Attach file",
       "emoji": "Emoji"
+    },
+    "message": {
+      "select": "Select",
+      "delete": "Delete",
+      "edit": "Edit",
+      "edited": "edited",
+      "editingBanner": "Editing — Esc to cancel",
+      "cancelEdit": "Cancel edit"
+    },
+    "selection": {
+      "cancel": "Cancel selection",
+      "deleteSelected": "Delete selected",
+      "deleteCount": "Delete ({{count}})"
+    },
+    "delete": {
+      "title": "Delete message",
+      "titleMany": "Delete messages",
+      "confirm": "Are you sure you want to delete this message?",
+      "confirmMany": "Are you sure you want to delete {{count}} messages?",
+      "chatTitle": "Delete chat",
+      "chatConfirm": "Are you sure you want to delete this chat? All messages will be removed from your list.",
+      "forEveryone": "Delete for everyone",
+      "cancel": "Cancel",
+      "submit": "Delete"
+    },
+    "context": {
+      "deleteChat": "Delete chat"
     }
   },
   "auth": {

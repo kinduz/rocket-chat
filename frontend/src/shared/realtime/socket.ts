@@ -5,7 +5,12 @@ import { io, type Socket } from 'socket.io-client';
 
 export type NewMessageEvent = { chatId: string; message: ChatMessage };
 export type MessageUpdatedEvent = { chatId: string; message: ChatMessage };
-export type MessageDeletedEvent = { chatId: string; messageId: string };
+export type MessagesDeletedEvent = {
+  chatId: string;
+  messageIds: string[];
+  unreadDecrement: number;
+};
+export type ChatDeletedEvent = { chatId: string };
 export type ChatReadEvent = {
   chatId: string;
   userId: string;
@@ -21,7 +26,8 @@ export type ChatTypingEvent = { chatId: string; userId: string };
 export interface ServerToClientEvents {
   'message:new': (e: NewMessageEvent) => void;
   'message:updated': (e: MessageUpdatedEvent) => void;
-  'message:deleted': (e: MessageDeletedEvent) => void;
+  'messages:deleted': (e: MessagesDeletedEvent) => void;
+  'chat:deleted': (e: ChatDeletedEvent) => void;
   'chat:delivered': (e: ChatDeliveredEvent) => void;
   'chat:read': (e: ChatReadEvent) => void;
   'chat:typing': (e: ChatTypingEvent) => void;

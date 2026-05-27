@@ -3,7 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  HttpCode,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -12,7 +11,6 @@ import {
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
-  ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
   ApiQuery,
@@ -21,6 +19,7 @@ import {
 import { Auth, CurrentUserID } from '../shared';
 import { ChatsService } from './chats.service';
 import {
+  DeleteMessagesDTO,
   EditMessageDTO,
   ListMessagesDTO,
   MarkReadDTO,
@@ -104,16 +103,22 @@ export class ChatsController {
   }
 
   @Auth()
-  @Delete(':chatId/messages/:messageId')
-  @HttpCode(204)
-  @ApiOperation({ summary: 'Delete own message' })
-  @ApiNoContentResponse()
-  deleteMessage(
+  @Delete('messages')
+  @ApiOperation({
+    summary:
+      'Delete messages. forEveryone=true → hard delete (own only); false → hide for current user. Omit messageIds to target all messages in the chat.',
+  })
+  @ApiOkResponse()
+  deleteMessages(
     @CurrentUserID() userId: string,
-    @Param('chatId', new ParseUUIDPipe()) chatId: string,
-    @Param('messageId', new ParseUUIDPipe()) messageId: string,
-  ): Promise<void> {
-    return this.chatsService.deleteMessage(userId, chatId, messageId);
+    @Body() dto: DeleteMessagesDTO,
+  ): Promise<{ deletedIds: string[] }> {
+    return this.chatsService.deleteMessages(
+      userId,
+      dto.chatId,
+      dto.forEveryone,
+      dto.messageIds,
+    );
   }
 
   @Auth()
