@@ -6,6 +6,7 @@ type TypingState = {
   // chatId → expiresAt (epoch ms)
   byChat: Record<string, number>;
   setTyping: (chatId: string, ttlMs?: number) => void;
+  clearTyping: (chatId: string) => void;
   clearExpired: () => void;
   isTyping: (chatId: string) => boolean;
 };
@@ -18,6 +19,13 @@ export const useTypingStore = create<TypingState>((set, get) => ({
     set((s) => ({
       byChat: { ...s.byChat, [chatId]: Date.now() + ttlMs },
     })),
+  clearTyping: (chatId) =>
+    set((s) => {
+      if (!(chatId in s.byChat)) return s;
+      const next = { ...s.byChat };
+      delete next[chatId];
+      return { byChat: next };
+    }),
   clearExpired: () => {
     const now = Date.now();
     const next: Record<string, number> = {};

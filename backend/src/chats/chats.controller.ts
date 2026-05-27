@@ -1,14 +1,18 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
+  ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
   ApiQuery,
@@ -17,6 +21,7 @@ import {
 import { Auth, CurrentUserID } from '../shared';
 import { ChatsService } from './chats.service';
 import {
+  EditMessageDTO,
   ListMessagesDTO,
   MarkReadDTO,
   MarkReadResponseDTO,
@@ -83,6 +88,32 @@ export class ChatsController {
     @Body() dto: MarkReadDTO,
   ): Promise<MarkReadResponseDTO> {
     return this.chatsService.markRead(userId, chatId, dto.messageId);
+  }
+
+  @Auth()
+  @Patch(':chatId/messages/:messageId')
+  @ApiOperation({ summary: 'Edit own message' })
+  @ApiOkResponse({ type: MessageDTO })
+  editMessage(
+    @CurrentUserID() userId: string,
+    @Param('chatId', new ParseUUIDPipe()) chatId: string,
+    @Param('messageId', new ParseUUIDPipe()) messageId: string,
+    @Body() dto: EditMessageDTO,
+  ): Promise<MessageDTO> {
+    return this.chatsService.editMessage(userId, chatId, messageId, dto.text);
+  }
+
+  @Auth()
+  @Delete(':chatId/messages/:messageId')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Delete own message' })
+  @ApiNoContentResponse()
+  deleteMessage(
+    @CurrentUserID() userId: string,
+    @Param('chatId', new ParseUUIDPipe()) chatId: string,
+    @Param('messageId', new ParseUUIDPipe()) messageId: string,
+  ): Promise<void> {
+    return this.chatsService.deleteMessage(userId, chatId, messageId);
   }
 
   @Auth()

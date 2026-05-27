@@ -1,5 +1,6 @@
 import { Logger, UsePipes, ValidationPipe } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { InjectRepository } from '@nestjs/typeorm';
 import {
   ConnectedSocket,
   MessageBody,
@@ -11,8 +12,10 @@ import {
 } from '@nestjs/websockets';
 import { IsUUID } from 'class-validator';
 import { Server, Socket } from 'socket.io';
+import { Repository } from 'typeorm';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { MessageDTO } from './dto';
+import { ChatMember } from './entities';
 
 export class TypingPayload {
   @IsUUID()
@@ -56,7 +59,11 @@ export class ChatsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService,
+    @InjectRepository(ChatMember)
+    private readonly chatMemberRepository: Repository<ChatMember>,
+  ) {}
 
   async handleConnection(socket: Socket): Promise<void> {
     try {
@@ -110,14 +117,27 @@ export class ChatsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('chat:typing')
-  onTyping(
+  async onTyping(
     @ConnectedSocket() socket: Socket,
     @MessageBody() body: TypingPayload,
-  ): void {
+  ): Promise<void> {
     const userId = socket.data.userId as string | undefined;
     if (!userId) return;
+    const isMember = await this.chatMemberRepository.existsBy({
+      chatId: body.chatId,
+      userId,
+    });
+    if (!isMember) return;
+
+    const members = await this.chatMemberRepository.find({
+      where: { chatId: body.chatId },
+      select: { userId: true },
+    });
     const event: ChatTypingEvent = { chatId: body.chatId, userId };
-    socket.to(chatRoom(body.chatId)).emit('chat:typing', event);
+    for (const m of members) {
+      if (m.userId === userId) continue;
+      this.server.to(userRoom(m.userId)).emit('chat:typing', event);
+    }
   }
 
   emitNewMessageToUser(message: MessageDTO, userId: string): void {
@@ -125,6 +145,20 @@ export class ChatsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       chatId: message.chatId,
       message,
     });
+  }
+
+  emitMessageUpdatedToUser(message: MessageDTO, userId: string): void {
+    this.server.to(userRoom(userId)).emit('message:updated', {
+      chatId: message.chatId,
+      message,
+    });
+  }
+
+  emitMessageDeletedToUser(
+    event: { chatId: string; messageId: string },
+    userId: string,
+  ): void {
+    this.server.to(userRoom(userId)).emit('message:deleted', event);
   }
 
   emitChatRead(event: ChatReadEvent, recipientUserIds: string[]): void {

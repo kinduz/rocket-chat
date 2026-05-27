@@ -16,6 +16,14 @@ export class MessageDTO {
   @ApiProperty({ type: String, format: 'date-time' })
   createdAt: string;
 
+  @ApiProperty({
+    type: String,
+    format: 'date-time',
+    nullable: true,
+    required: false,
+  })
+  editedAt: string | null;
+
   @ApiProperty({ description: 'true if the current user is the sender' })
   fromMe: boolean;
 

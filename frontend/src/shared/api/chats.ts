@@ -6,6 +6,7 @@ export type ChatMessage = {
   senderId: string;
   text: string;
   createdAt: string;
+  editedAt: string | null;
   fromMe: boolean;
   delivered: boolean;
   read: boolean;
@@ -112,6 +113,29 @@ export class ChatsResource extends Resource {
       `/chats/${chatId}/read`,
       { messageId },
     );
+    return data;
+  }
+
+  async editMessage(
+    chatId: string,
+    messageId: string,
+    text: string,
+  ): Promise<SendMessageResponse> {
+    const { data } = await this.client.patch<SendMessageResponse>(
+      `/chats/${chatId}/messages/${messageId}`,
+      { text },
+    );
+    return data;
+  }
+
+  async deleteMessage(
+    chatId: string,
+    messageId: string,
+  ): Promise<R<null> | undefined> {
+    const { data, status } = await this.client.delete<R<null> | undefined>(
+      `/chats/${chatId}/messages/${messageId}`,
+    );
+    if (status === 204) return undefined;
     return data;
   }
 }

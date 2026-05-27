@@ -1,3 +1,4 @@
+export * from './edit-message.dto';
 export * from './list-messages.dto';
 export * from './mark-read.dto';
 export * from './message.dto';

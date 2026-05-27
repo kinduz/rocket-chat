@@ -1,7 +1,7 @@
 'use client';
 
 import { rcClient } from '@app/shared/api';
-import { chatsKeys, messagesKeys } from '@app/shared/hooks';
+import { messagesKeys } from '@app/shared/hooks';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 type SendMessageInput =
@@ -29,7 +29,6 @@ export function useSendMessage() {
     },
     onSuccess: ({ chatId }) => {
       queryClient.invalidateQueries({ queryKey: messagesKeys.list(chatId) });
-      queryClient.invalidateQueries({ queryKey: chatsKeys.all });
     },
   });
 }

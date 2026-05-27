@@ -11,9 +11,9 @@ export function QueryProvider({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={client}>
       {children}
-      {/* {process.env.NODE_ENV !== 'production' ? (
+      {process.env.NODE_ENV !== 'production' ? (
         <ReactQueryDevtools initialIsOpen={false} />
-      ) : null} */}
+      ) : null}
     </QueryClientProvider>
   );
 }

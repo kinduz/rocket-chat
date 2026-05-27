@@ -1,7 +1,11 @@
 'use client';
 
-import { ACCESS_TOKEN_KEY, type ChatMessage } from '@app/shared/api';
-import { chatsKeys, messagesKeys } from '@app/shared/hooks';
+import {
+  ACCESS_TOKEN_KEY,
+  type ChatListItem,
+  type ChatMessage,
+} from '@app/shared/api';
+import { chatsKeys, messagesKeys, useToast } from '@app/shared/hooks';
 import { useQueryClient } from '@tanstack/react-query';
 import Cookies from 'js-cookie';
 import {
@@ -14,11 +18,13 @@ import {
   useState,
 } from 'react';
 import {
-  type ChatReadEvent,
   type ChatDeliveredEvent,
+  type ChatReadEvent,
   type ChatSocket,
   type ChatTypingEvent,
   createChatSocket,
+  type MessageDeletedEvent,
+  type MessageUpdatedEvent,
   type NewMessageEvent,
 } from './socket';
 import { useTypingStore } from './typing-store';
@@ -28,6 +34,7 @@ type ChatSocketContextValue = {
   joinChat: (chatId: string) => void;
   leaveChat: (chatId: string) => void;
   emitTyping: (chatId: string) => void;
+  resetTypingThrottle: (chatId: string) => void;
 };
 
 const ChatSocketContext = createContext<ChatSocketContextValue>({
@@ -35,6 +42,7 @@ const ChatSocketContext = createContext<ChatSocketContextValue>({
   joinChat: () => {},
   leaveChat: () => {},
   emitTyping: () => {},
+  resetTypingThrottle: () => {},
 });
 
 export const useChatSocket = () => useContext(ChatSocketContext);
@@ -43,11 +51,38 @@ type ChatSocketProviderProps = {
   children: ReactNode;
 };
 
+const updateChatListOnNewMessage = (
+  prev: ChatListItem[] | undefined,
+  e: NewMessageEvent,
+): ChatListItem[] | undefined => {
+  if (!prev) return prev;
+  const idx = prev.findIndex((c) => c.kind === 'chat' && c.id === e.chatId);
+  if (idx < 0) return prev;
+  const chat = prev[idx];
+  if (chat.kind !== 'chat') return prev;
+  const updated: ChatListItem = {
+    ...chat,
+    unreadCount: e.message.fromMe ? 0 : chat.unreadCount + 1,
+    lastMessage: {
+      text: e.message.text,
+      at: e.message.createdAt,
+      fromMe: e.message.fromMe,
+      delivered: e.message.delivered,
+      read: e.message.read,
+    },
+  };
+  const next = [updated, ...prev.slice(0, idx), ...prev.slice(idx + 1)];
+  return next;
+};
+
 export function ChatSocketProvider({ children }: ChatSocketProviderProps) {
   const queryClient = useQueryClient();
   const setTyping = useTypingStore((s) => s.setTyping);
+  const clearTyping = useTypingStore((s) => s.clearTyping);
   const [socket, setSocket] = useState<ChatSocket | null>(null);
   const lastTypingEmittedAt = useRef<Record<string, number>>({});
+
+  const { toast } = useToast();
 
   useEffect(() => {
     const token = Cookies.get(ACCESS_TOKEN_KEY);
@@ -65,7 +100,26 @@ export function ChatSocketProvider({ children }: ChatSocketProviderProps) {
           return [...prev, e.message];
         },
       );
-      queryClient.invalidateQueries({ queryKey: chatsKeys.all });
+
+      let chatExistedInCache = false;
+      queryClient.setQueriesData<ChatListItem[] | undefined>(
+        { queryKey: chatsKeys.all },
+        (prev) => {
+          if (!prev) return prev;
+          if (prev.some((c) => c.kind === 'chat' && c.id === e.chatId)) {
+            chatExistedInCache = true;
+          }
+          return updateChatListOnNewMessage(prev, e);
+        },
+      );
+      if (!chatExistedInCache) {
+        queryClient.invalidateQueries({ queryKey: chatsKeys.all });
+      }
+
+      // Other side's message arrived → they stopped typing.
+      if (!e.message.fromMe) {
+        clearTyping(e.chatId);
+      }
     });
 
     s.on('chat:delivered', (e: ChatDeliveredEvent) => {
@@ -89,7 +143,25 @@ export function ChatSocketProvider({ children }: ChatSocketProviderProps) {
           return changed ? next : prev;
         },
       );
-      queryClient.invalidateQueries({ queryKey: chatsKeys.all });
+      queryClient.setQueriesData<ChatListItem[] | undefined>(
+        { queryKey: chatsKeys.all },
+        (prev) =>
+          prev?.map((c) => {
+            if (
+              c.kind === 'chat' &&
+              c.id === e.chatId &&
+              c.lastMessage?.fromMe &&
+              !c.lastMessage.delivered &&
+              new Date(c.lastMessage.at).getTime() <= deliveredUntil
+            ) {
+              return {
+                ...c,
+                lastMessage: { ...c.lastMessage, delivered: true },
+              };
+            }
+            return c;
+          }),
+      );
     });
 
     s.on('chat:read', (e: ChatReadEvent) => {
@@ -113,7 +185,107 @@ export function ChatSocketProvider({ children }: ChatSocketProviderProps) {
           return changed ? next : prev;
         },
       );
-      queryClient.invalidateQueries({ queryKey: chatsKeys.all });
+      queryClient.setQueriesData<ChatListItem[] | undefined>(
+        { queryKey: chatsKeys.all },
+        (prev) =>
+          prev?.map((c) => {
+            if (
+              c.kind === 'chat' &&
+              c.id === e.chatId &&
+              c.lastMessage?.fromMe &&
+              !c.lastMessage.read &&
+              new Date(c.lastMessage.at).getTime() <= readUntil
+            ) {
+              return {
+                ...c,
+                lastMessage: {
+                  ...c.lastMessage,
+                  delivered: true,
+                  read: true,
+                },
+              };
+            }
+            return c;
+          }),
+      );
+    });
+
+    s.on('message:updated', (e: MessageUpdatedEvent) => {
+      queryClient.setQueryData<ChatMessage[] | undefined>(
+        messagesKeys.list(e.chatId),
+        (prev) => {
+          if (!prev) return prev;
+          let changed = false;
+          const next = prev.map((m) => {
+            if (m.id === e.message.id) {
+              changed = true;
+              return e.message;
+            }
+            return m;
+          });
+          return changed ? next : prev;
+        },
+      );
+      queryClient.setQueriesData<ChatListItem[] | undefined>(
+        { queryKey: chatsKeys.all },
+        (prev) =>
+          prev?.map((c) => {
+            if (
+              c.kind === 'chat' &&
+              c.id === e.chatId &&
+              c.lastMessage &&
+              new Date(c.lastMessage.at).getTime() ===
+                new Date(e.message.createdAt).getTime()
+            ) {
+              return {
+                ...c,
+                lastMessage: { ...c.lastMessage, text: e.message.text },
+              };
+            }
+            return c;
+          }),
+      );
+    });
+
+    s.on('message:deleted', (e: MessageDeletedEvent) => {
+      let removedWasLast = false;
+      queryClient.setQueryData<ChatMessage[] | undefined>(
+        messagesKeys.list(e.chatId),
+        (prev) => {
+          if (!prev) return prev;
+          const idx = prev.findIndex((m) => m.id === e.messageId);
+          if (idx < 0) return prev;
+          if (idx === prev.length - 1) removedWasLast = true;
+          return [...prev.slice(0, idx), ...prev.slice(idx + 1)];
+        },
+      );
+      if (removedWasLast) {
+        queryClient.setQueriesData<ChatListItem[] | undefined>(
+          { queryKey: chatsKeys.all },
+          (prev) => {
+            if (!prev) return prev;
+            const messages = queryClient.getQueryData<ChatMessage[]>(
+              messagesKeys.list(e.chatId),
+            );
+            const lastMsg = messages?.[messages.length - 1] ?? null;
+            return prev.map((c) => {
+              if (c.kind !== 'chat' || c.id !== e.chatId) return c;
+              return {
+                ...c,
+                lastMessage: lastMsg
+                  ? {
+                      text: lastMsg.text,
+                      at: lastMsg.createdAt,
+                      fromMe: lastMsg.fromMe,
+                      delivered: lastMsg.delivered,
+                      read: lastMsg.read,
+                    }
+                  : null,
+              };
+            });
+          },
+        );
+      }
     });
 
     s.on('chat:typing', (e: ChatTypingEvent) => {
@@ -125,7 +297,7 @@ export function ChatSocketProvider({ children }: ChatSocketProviderProps) {
       s.disconnect();
       setSocket(null);
     };
-  }, [queryClient, setTyping]);
+  }, [queryClient, setTyping, clearTyping]);
 
   const value = useMemo<ChatSocketContextValue>(() => {
     return {
@@ -139,6 +311,9 @@ export function ChatSocketProvider({ children }: ChatSocketProviderProps) {
         if (now - last < 1500) return;
         lastTypingEmittedAt.current[chatId] = now;
         socket.emit('chat:typing', { chatId });
+      },
+      resetTypingThrottle: (chatId) => {
+        lastTypingEmittedAt.current[chatId] = 0;
       },
     };
   }, [socket]);

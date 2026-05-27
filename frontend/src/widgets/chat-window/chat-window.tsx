@@ -4,7 +4,9 @@ import { getChatDisplayName } from '@app/entities/chat';
 import { MessageList } from '@app/entities/message';
 import { useSelectedChat } from '@app/features/chat-selection';
 import { MessageComposer, useSendMessage } from '@app/features/send-message';
+import sendSoundUrl from '@app/features/send-message/assets/send.mp3';
 import {
+  type ChatListItem,
   type ChatMessage,
   chatsKeys,
   rcClient,
@@ -13,7 +15,7 @@ import {
 } from '@app/shared';
 import { useChatSocket, useTypingStore } from '@app/shared/realtime';
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChatHeader } from './chat-header';
 
@@ -23,7 +25,8 @@ export const ChatWindow = () => {
   const select = useSelectedChat((s) => s.select);
   const { data: chats } = useChats();
   const queryClient = useQueryClient();
-  const { joinChat, leaveChat, emitTyping } = useChatSocket();
+  const { joinChat, leaveChat, emitTyping, resetTypingThrottle } =
+    useChatSocket();
 
   const selectedFromList =
     selected?.kind === 'chat'
@@ -39,20 +42,28 @@ export const ChatWindow = () => {
   const typing = !!typingExpiresAt && typingExpiresAt > Date.now();
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  const markedReadRef = useRef<Set<string>>(new Set());
+  const lastSentReadAtByChatRef = useRef<Record<string, number>>({});
+  const wasAtBottomRef = useRef<boolean>(true);
   const messagesCount = messages?.length ?? 0;
   const selectedId = activeSelected?.id;
+  const sendAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: scroll to bottom when messages arrive or chat switches
+  // biome-ignore lint/correctness/useExhaustiveDependencies: snap to bottom on chat switch
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
-  }, [messagesCount, selectedId, typing]);
+    wasAtBottomRef.current = true;
+  }, [selectedId]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: scroll to bottom on new message only if we were already there
   useEffect(() => {
-    markedReadRef.current.clear();
-  }, [chatId]);
+    const el = scrollRef.current;
+    if (!el) return;
+    if (wasAtBottomRef.current) {
+      el.scrollTop = el.scrollHeight;
+    }
+  }, [messagesCount]);
 
   useEffect(() => {
     if (!chatId) return;
@@ -60,20 +71,107 @@ export const ChatWindow = () => {
     return () => leaveChat(chatId);
   }, [chatId, joinChat, leaveChat]);
 
-  const handleMessageVisible = useCallback(
-    (message: ChatMessage) => {
-      if (!chatId || message.fromMe || markedReadRef.current.has(message.id)) {
-        return;
-      }
+  const latestIncoming = useMemo(() => {
+    if (!messages) return null;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (!m.fromMe) return m;
+    }
+    return null;
+  }, [messages]);
 
-      markedReadRef.current.add(message.id);
-      void rcClient.chats.markRead(chatId, message.id).then((res) => {
-        if (!res.error) {
-          queryClient.invalidateQueries({ queryKey: chatsKeys.all });
+  useEffect(() => {
+    const audio = new Audio(sendSoundUrl);
+    audio.preload = 'auto';
+    sendAudioRef.current = audio;
+    return () => {
+      sendAudioRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!chatId || !latestIncoming) return;
+    const ts = new Date(latestIncoming.createdAt).getTime();
+    const sent = lastSentReadAtByChatRef.current[chatId] ?? 0;
+    if (ts <= sent) return;
+
+    const targetChatId = chatId;
+    const messageId = latestIncoming.id;
+    lastSentReadAtByChatRef.current[targetChatId] = ts;
+
+    void rcClient.chats
+      .markRead(targetChatId, messageId)
+      .then((res) => {
+        if (res.error) {
+          if (lastSentReadAtByChatRef.current[targetChatId] === ts) {
+            lastSentReadAtByChatRef.current[targetChatId] = sent;
+          }
+          return;
+        }
+        queryClient.setQueriesData<ChatListItem[] | undefined>(
+          { queryKey: chatsKeys.all },
+          (prev) =>
+            prev?.map((c) =>
+              c.kind === 'chat' && c.id === targetChatId
+                ? { ...c, unreadCount: 0 }
+                : c,
+            ),
+        );
+      })
+      .catch(() => {
+        if (lastSentReadAtByChatRef.current[targetChatId] === ts) {
+          lastSentReadAtByChatRef.current[targetChatId] = sent;
         }
       });
+  }, [chatId, latestIncoming, queryClient]);
+
+  const [editing, setEditing] = useState<{ id: string; text: string } | null>(
+    null,
+  );
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset editing state when switching chats
+  useEffect(() => {
+    setEditing(null);
+  }, [chatId]);
+
+  const handleStartEdit = useCallback((message: ChatMessage) => {
+    setEditing({ id: message.id, text: message.text });
+  }, []);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditing(null);
+  }, []);
+
+  const handleSubmitEdit = useCallback(
+    async (text: string) => {
+      if (!chatId || !editing) return;
+      const value = text.trim();
+      if (!value) return;
+      if (value === editing.text) {
+        setEditing(null);
+        return;
+      }
+      const res = await rcClient.chats.editMessage(chatId, editing.id, value);
+      if (res.error) return;
+      const audio = sendAudioRef.current;
+      if (audio) {
+        audio.currentTime = 0;
+        audio.play().catch(() => undefined);
+      }
+      setEditing(null);
     },
-    [chatId, queryClient],
+    [chatId, editing],
+  );
+
+  const handleDelete = useCallback(
+    async (message: ChatMessage) => {
+      if (!chatId) return;
+      await rcClient.chats.deleteMessage(chatId, message.id);
+      if (editing?.id === message.id) {
+        setEditing(null);
+      }
+    },
+    [chatId, editing],
   );
 
   if (!activeSelected) {
@@ -88,6 +186,12 @@ export const ChatWindow = () => {
   const title = getChatDisplayName(activeSelected, index, t);
 
   const handleSend = async (text: string) => {
+    if (chatId) resetTypingThrottle(chatId);
+    const el = scrollRef.current;
+    if (el) {
+      wasAtBottomRef.current = true;
+      el.scrollTop = el.scrollHeight;
+    }
     if (activeSelected.kind === 'chat') {
       await sendMessage.mutateAsync({
         kind: 'chat',
@@ -138,13 +242,20 @@ export const ChatWindow = () => {
 
       <div
         ref={scrollRef}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          const distanceFromBottom =
+            el.scrollHeight - el.scrollTop - el.clientHeight;
+          wasAtBottomRef.current = distanceFromBottom < 40;
+        }}
         className="relative flex-1 overflow-y-auto bg-[#1a1a1d] scrollbar-thin scrollbar-thumb-white/5 scrollbar-track-transparent"
       >
         {activeSelected.kind === 'chat' && (hasMessages || typing) && (
           <MessageList
             messages={messages ?? []}
-            onMessageVisible={handleMessageVisible}
             typing={typing}
+            onEdit={handleStartEdit}
+            onDelete={handleDelete}
           />
         )}
         {showEmptyMessages && (
@@ -165,6 +276,9 @@ export const ChatWindow = () => {
         onTyping={() => {
           if (chatId) emitTyping(chatId);
         }}
+        editingText={editing?.text}
+        onSubmitEdit={handleSubmitEdit}
+        onCancelEdit={handleCancelEdit}
       />
     </div>
   );

@@ -23,4 +23,7 @@ export class Message {
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  editedAt: Date | null;
 }

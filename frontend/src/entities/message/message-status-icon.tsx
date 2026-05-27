@@ -16,7 +16,7 @@ export const MessageStatusIcon = ({
   if (message.read) {
     return (
       <CheckCheck
-        className={cn('size-3.5 shrink-0 text-[#47a3ff]', className)}
+        className={cn('size-3.5 shrink-0 text-[#58a7f7]', className)}
         aria-label="Read"
       />
     );

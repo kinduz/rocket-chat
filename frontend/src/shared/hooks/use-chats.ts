@@ -20,6 +20,10 @@ export function useChats(q?: string) {
   return useQuery({
     queryKey: chatsKeys.list(q),
     queryFn: () => fetchChats(q),
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
   });
 }
 

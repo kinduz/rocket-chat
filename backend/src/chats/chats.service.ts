@@ -281,6 +281,25 @@ export class ChatsService {
       lastMessageAt: now,
     });
 
+    const senderMember = await this.chatMemberRepository.findOne({
+      where: { chatId, userId: senderId },
+    });
+    if (senderMember) {
+      let changed = false;
+      if (!senderMember.lastReadAt || senderMember.lastReadAt < saved.createdAt) {
+        senderMember.lastReadAt = saved.createdAt;
+        changed = true;
+      }
+      if (
+        !senderMember.lastDeliveredAt ||
+        senderMember.lastDeliveredAt < saved.createdAt
+      ) {
+        senderMember.lastDeliveredAt = saved.createdAt;
+        changed = true;
+      }
+      if (changed) await this.chatMemberRepository.save(senderMember);
+    }
+
     const dto = this.toMessageDTO(saved, senderId, null);
     const recipients = await this.getOtherMemberIds(chatId, senderId);
     this.gateway.emitNewMessageToUser(dto, senderId);
@@ -318,10 +337,110 @@ export class ChatsService {
       senderId: message.senderId,
       text: message.text,
       createdAt: message.createdAt.toISOString(),
+      editedAt: message.editedAt ? message.editedAt.toISOString() : null,
       fromMe,
       delivered,
       read,
     };
+  }
+
+  async editMessage(
+    userId: string,
+    chatId: string,
+    messageId: string,
+    rawText: string,
+  ): Promise<MessageDTO> {
+    await this.ensureMembership(userId, chatId);
+
+    const message = await this.messageRepository.findOne({
+      where: { id: messageId, chatId },
+    });
+    if (!message) {
+      throw new ApiException(ApiErrorCode.BAD_REQUEST, {
+        message: 'Message does not belong to this chat',
+      });
+    }
+    if (message.senderId !== userId) {
+      throw new ApiException(ApiErrorCode.FORBIDDEN);
+    }
+
+    const text = rawText.trim();
+    if (!text) {
+      throw new ApiException(ApiErrorCode.BAD_REQUEST, {
+        message: 'Text cannot be empty',
+      });
+    }
+
+    message.text = text;
+    message.editedAt = new Date();
+    const saved = await this.messageRepository.save(message);
+
+    const chat = await this.chatRepository.findOne({ where: { id: chatId } });
+    if (chat?.lastMessageId === saved.id) {
+      await this.chatRepository.update(chatId, { lastMessageText: text });
+    }
+
+    const memberIds = await this.getAllMemberIds(chatId);
+    for (const memberId of memberIds) {
+      this.gateway.emitMessageUpdatedToUser(
+        this.toMessageDTO(saved, memberId, null),
+        memberId,
+      );
+    }
+
+    return this.toMessageDTO(saved, userId, null);
+  }
+
+  async deleteMessage(
+    userId: string,
+    chatId: string,
+    messageId: string,
+  ): Promise<void> {
+    await this.ensureMembership(userId, chatId);
+
+    const message = await this.messageRepository.findOne({
+      where: { id: messageId, chatId },
+    });
+    if (!message) {
+      throw new ApiException(ApiErrorCode.BAD_REQUEST, {
+        message: 'Message does not belong to this chat',
+      });
+    }
+    if (message.senderId !== userId) {
+      throw new ApiException(ApiErrorCode.FORBIDDEN);
+    }
+
+    await this.messageRepository.delete(messageId);
+
+    const chat = await this.chatRepository.findOne({ where: { id: chatId } });
+    if (chat?.lastMessageId === messageId) {
+      const prev = await this.messageRepository.findOne({
+        where: { chatId },
+        order: { createdAt: 'DESC' },
+      });
+      await this.chatRepository.update(chatId, {
+        lastMessageId: prev?.id ?? null,
+        lastMessageText: prev?.text ?? null,
+        lastMessageSenderId: prev?.senderId ?? null,
+        lastMessageAt: prev?.createdAt ?? null,
+      });
+    }
+
+    const memberIds = await this.getAllMemberIds(chatId);
+    for (const memberId of memberIds) {
+      this.gateway.emitMessageDeletedToUser(
+        { chatId, messageId },
+        memberId,
+      );
+    }
+  }
+
+  private async getAllMemberIds(chatId: string): Promise<string[]> {
+    const rows = await this.chatMemberRepository.find({
+      where: { chatId },
+      select: { userId: true },
+    });
+    return rows.map((r) => r.userId);
   }
 
   async findDirectChat(

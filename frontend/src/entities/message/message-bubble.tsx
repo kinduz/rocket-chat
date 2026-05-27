@@ -2,44 +2,29 @@
 
 import type { ChatMessage } from '@app/shared/api';
 import { cn } from '@app/shared/lib/utils';
-import { useEffect, useRef } from 'react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { formatMessageTime } from './lib/format-message-time';
 import { MessageStatusIcon } from './message-status-icon';
 
 type MessageBubbleProps = {
   message: ChatMessage;
-  onVisible?: (message: ChatMessage) => void;
+  onEdit?: (message: ChatMessage) => void;
+  onDelete?: (message: ChatMessage) => void;
 };
 
-export const MessageBubble = ({ message, onVisible }: MessageBubbleProps) => {
-  const { text, createdAt, fromMe } = message;
-  const rootRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (fromMe || !onVisible) return;
-    const el = rootRef.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry?.isIntersecting) {
-          onVisible(message);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.85 },
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [fromMe, message, onVisible]);
+export const MessageBubble = ({
+  message,
+  onEdit,
+  onDelete,
+}: MessageBubbleProps) => {
+  const { text, createdAt, editedAt, fromMe } = message;
+  const canModify = fromMe && (onEdit || onDelete);
 
   return (
     <div
-      ref={rootRef}
       className={cn(
-        'flex w-full px-4',
-        fromMe ? 'justify-end' : 'justify-start',
+        'group flex w-full flex-col px-4',
+        fromMe ? 'items-end' : 'items-start',
       )}
     >
       <div
@@ -50,13 +35,18 @@ export const MessageBubble = ({ message, onVisible }: MessageBubbleProps) => {
             : 'bg-[#2c2c30] text-[#fbfcfb] rounded-bl-md',
         )}
       >
-        <span className="whitespace-pre-wrap break-words">{text}</span>
+        <span className="whitespace-pre-wrap wrap-break-word">{text}</span>
         <span
           className={cn(
             'mt-0.5 flex items-center gap-1 self-end',
             fromMe ? 'text-white/70' : 'text-[#adaeb1]',
           )}
         >
+          {editedAt && (
+            <span className="text-[11px] italic leading-none opacity-70">
+              edited
+            </span>
+          )}
           <span
             suppressHydrationWarning
             className={cn(
@@ -69,6 +59,31 @@ export const MessageBubble = ({ message, onVisible }: MessageBubbleProps) => {
           {fromMe && <MessageStatusIcon message={message} />}
         </span>
       </div>
+
+      {canModify && (
+        <div className="mt-1 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+          {onEdit && (
+            <button
+              type="button"
+              onClick={() => onEdit(message)}
+              aria-label="Edit message"
+              className="flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground cursor-pointer"
+            >
+              <Pencil className="size-3.5" aria-hidden />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              type="button"
+              onClick={() => onDelete(message)}
+              aria-label="Delete message"
+              className="flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-red-500/15 hover:text-red-400 cursor-pointer"
+            >
+              <Trash2 className="size-3.5" aria-hidden />
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
